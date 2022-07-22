@@ -27,6 +27,8 @@ type tlsProber struct {
 	// and tracking some subset of the TCP flow state.
 	sendSynAndAck bool
 	synDelay      time.Duration
+
+	checksums bool
 }
 
 func (p *tlsProber) registerFlags() {
@@ -40,7 +42,7 @@ func (p *tlsProber) sendProbe(ip net.IP, name string, lAddr string, verbose bool
 	}
 
 	addr := net.JoinHostPort(ip.String(), "443")
-	return sendTCP(addr, out, lAddr, p.device, p.r, p.synDelay, p.sendSynAndAck, verbose)
+	return sendTCP(addr, out, lAddr, p.device, p.r, p.synDelay, p.sendSynAndAck, p.checksums, verbose)
 }
 
 func (p *tlsProber) buildPayload(name string) ([]byte, error) {

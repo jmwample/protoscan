@@ -78,6 +78,7 @@ func main() {
 	seed := flag.Int64("seed", -1, "[HTTP/TLS/QUIC] seed for random elements of generated packets. default seeded with time.Now.Nano")
 	noSynAck := flag.Bool("nsa", false, "[HTTP/TLS] No Syn Ack (nsa) disable syn, and ack warm up packets for tcp probes")
 	synDelay := flag.Duration("syn-delay", 2*time.Millisecond, "[HTTP/TLS] when syn ack is enabled delay between syn and data")
+	noChecksums := flag.Bool("no-checksums", false, "[HTTP/TLS] fix checksums on injected packets for TCP protocols")
 
 	for _, p := range probers {
 		p.registerFlags()
@@ -102,6 +103,7 @@ func main() {
 		prober.r = rand.New(rand.NewSource(prober.seed))
 		prober.sendSynAndAck = !*noSynAck
 		prober.synDelay = *synDelay
+		prober.checksums = !*noChecksums
 	case *tlsProber:
 		prober.device = *iface
 		if *seed == -1 {
@@ -112,6 +114,7 @@ func main() {
 		prober.r = rand.New(rand.NewSource(prober.seed))
 		prober.sendSynAndAck = !*noSynAck
 		prober.synDelay = *synDelay
+		prober.checksums = !*noChecksums
 	case *quicProber:
 		prober.device = *iface
 		if *seed == -1 {

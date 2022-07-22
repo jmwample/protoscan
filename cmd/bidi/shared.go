@@ -72,7 +72,7 @@ func sendUDP(dst string, payload []byte, lAddr string, verbose bool) error {
 	return nil
 }
 
-func sendTCP(dst string, payload []byte, lAddr, device string, r *rand.Rand, synDelay time.Duration, sendSynAck, verbose bool) error {
+func sendTCP(dst string, payload []byte, lAddr, device string, r *rand.Rand, synDelay time.Duration, sendSynAck, checksums, verbose bool) error {
 
 	host, portStr, err := net.SplitHostPort(dst)
 	if err != nil {
@@ -84,8 +84,8 @@ func sendTCP(dst string, payload []byte, lAddr, device string, r *rand.Rand, syn
 
 	var useV4 = ip.To4() != nil
 	options := gopacket.SerializeOptions{
-		FixLengths: true,
-		// ComputeChecksums: true,
+		FixLengths:       true,
+		ComputeChecksums: checksums,
 	}
 
 	localIface, err := net.InterfaceByName(device)
@@ -98,46 +98,10 @@ func sendTCP(dst string, payload []byte, lAddr, device string, r *rand.Rand, syn
 		return err
 	}
 
-	// Fill out IP header with source and dest
-	var ipLayer gopacket.SerializableLayer
-	if useV4 {
-		if localIP.To4() == nil {
-			return fmt.Errorf("v6 src for v4 dst")
-		}
-		ipLayer = &layers.IPv4{
-			SrcIP:    localIP,
-			DstIP:    ip,
-			Version:  4,
-			TTL:      64,
-			Protocol: layers.IPProtocolTCP,
-		}
-	} else {
-		if localIP.To4() != nil {
-			return fmt.Errorf("v4 src for v6 dst")
-		}
-		ipLayer = &layers.IPv6{
-			SrcIP:      localIP,
-			DstIP:      ip,
-			Version:    6,
-			HopLimit:   64,
-			NextHeader: layers.IPProtocolTCP,
-		}
-	}
-
 	// Pick a random source port between 1000 and 65535
 	randPort := (r.Int31() % 64535) + 1000
 	seq := r.Uint32()
 	ack := r.Uint32()
-
-	// build syn and ack payloads incase we are sending syn and ack
-	synBuf, err := getSyn(uint32(randPort), uint32(port), seq, options)
-	if err != nil {
-		return err
-	}
-	ackBuf, err := getAck(uint32(randPort), uint32(port), seq+1, ack, options)
-	if err != nil {
-		return err
-	}
 
 	// Fill TCP  Payload layer details
 	tcpLayer := layers.TCP{
@@ -150,8 +114,52 @@ func sendTCP(dst string, payload []byte, lAddr, device string, r *rand.Rand, syn
 		Ack:     ack,
 	}
 
+	// Fill out IP header with source and dest
+	var ipLayer gopacket.SerializableLayer
+	var networkLayer gopacket.NetworkLayer
+	if useV4 {
+		if localIP.To4() == nil {
+			return fmt.Errorf("v6 src for v4 dst")
+		}
+		ipLayer4 := &layers.IPv4{
+			SrcIP:    localIP,
+			DstIP:    ip,
+			Version:  4,
+			TTL:      64,
+			Protocol: layers.IPProtocolTCP,
+		}
+		networkLayer = ipLayer4
+		ipLayer = ipLayer4
+	} else {
+		if localIP.To4() != nil {
+			return fmt.Errorf("v4 src for v6 dst")
+		}
+		ipLayer6 := &layers.IPv6{
+			SrcIP:      localIP,
+			DstIP:      ip,
+			Version:    6,
+			HopLimit:   64,
+			NextHeader: layers.IPProtocolTCP,
+		}
+		networkLayer = ipLayer6
+		ipLayer = ipLayer6
+	}
+
+	tcpLayer.SetNetworkLayerForChecksum(networkLayer)
+
+	// serialize IP header buf
 	ipHeaderBuf := gopacket.NewSerializeBuffer()
 	err = ipLayer.SerializeTo(ipHeaderBuf, options)
+	if err != nil {
+		return err
+	}
+
+	// build syn, ack, and data payloads
+	synBuf, err := getSyn(uint32(randPort), uint32(port), seq, options, networkLayer)
+	if err != nil {
+		return err
+	}
+	ackBuf, err := getAck(uint32(randPort), uint32(port), seq+1, ack, options, networkLayer)
 	if err != nil {
 		return err
 	}
@@ -252,15 +260,36 @@ func sendTCP(dst string, payload []byte, lAddr, device string, r *rand.Rand, syn
 	return nil
 }
 
-func getSyn(srcPort, dstPort, seq uint32, options gopacket.SerializeOptions) ([]byte, error) {
+func getSyn(srcPort, dstPort, seq uint32, options gopacket.SerializeOptions, ipLayer gopacket.NetworkLayer) ([]byte, error) {
 	synLayer := layers.TCP{
 		SrcPort: layers.TCPPort(srcPort),
 		DstPort: layers.TCPPort(dstPort),
 		SYN:     true,
-		Window:  502,
+		Window:  28800,
 		Seq:     seq,
 		Ack:     0,
+		Options: []layers.TCPOption{
+			layers.TCPOption{
+				OptionType:   layers.TCPOptionKindMSS,
+				OptionLength: 4,
+				OptionData:   []byte{0x05, 0xa0},
+			},
+			layers.TCPOption{
+				OptionType:   layers.TCPOptionKindSACKPermitted,
+				OptionLength: 2,
+			},
+			layers.TCPOption{
+				OptionType: layers.TCPOptionKindNop,
+			},
+			layers.TCPOption{
+				OptionType:   layers.TCPOptionKindWindowScale,
+				OptionLength: 3,
+				OptionData:   []byte{0x07},
+			},
+		},
 	}
+
+	synLayer.SetNetworkLayerForChecksum(ipLayer)
 
 	tcpPayloadBuf := gopacket.NewSerializeBuffer()
 	err := gopacket.SerializeLayers(tcpPayloadBuf, options, &synLayer)
@@ -269,16 +298,26 @@ func getSyn(srcPort, dstPort, seq uint32, options gopacket.SerializeOptions) ([]
 	}
 	return tcpPayloadBuf.Bytes(), nil
 }
-func getAck(srcPort, dstPort, seq, ack uint32, options gopacket.SerializeOptions) ([]byte, error) {
+func getAck(srcPort, dstPort, seq, ack uint32, options gopacket.SerializeOptions, ipLayer gopacket.NetworkLayer) ([]byte, error) {
 
 	ackLayer := &layers.TCP{
 		SrcPort: layers.TCPPort(srcPort),
 		DstPort: layers.TCPPort(dstPort),
 		ACK:     true,
-		Window:  502,
+		Window:  225,
 		Seq:     seq,
 		Ack:     ack,
+		Options: []layers.TCPOption{
+			layers.TCPOption{
+				OptionType: layers.TCPOptionKindNop,
+			},
+			layers.TCPOption{
+				OptionType: layers.TCPOptionKindNop,
+			},
+		},
 	}
+
+	ackLayer.SetNetworkLayerForChecksum(ipLayer)
 
 	tcpPayloadBuf := gopacket.NewSerializeBuffer()
 	err := gopacket.SerializeLayers(tcpPayloadBuf, options, ackLayer)
@@ -286,4 +325,12 @@ func getAck(srcPort, dstPort, seq, ack uint32, options gopacket.SerializeOptions
 		return nil, err
 	}
 	return tcpPayloadBuf.Bytes(), nil
+}
+
+func decodeOrPanic(s string) []byte {
+	b, err := hex.DecodeString(s)
+	if err != nil {
+		panic(err)
+	}
+	return b
 }
