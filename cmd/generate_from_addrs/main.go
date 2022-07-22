@@ -11,9 +11,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/jmwample/protoscan/pkg/gen"
+
 	"github.com/oschwald/geoip2-golang"
 	"github.com/oschwald/maxminddb-golang"
-	"github.com/timartiny/v4vsv6/pkg/gen"
 )
 
 var pathASN = "GeoLite2-ASN/"

@@ -12,7 +12,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/timartiny/v4vsv6/pkg/gen"
+	"github.com/jmwample/protoscan/pkg/gen"
 )
 
 var pathCC = "GeoLite2-Country/"
