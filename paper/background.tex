@@ -1,0 +1,244 @@
+\section{Background}\label{sec:background}
+Our work is focused on uncovering differences in {\em Internet censorship} that occur
+from {\em DNS censorship} mechanisms' failure to effectively adapt to the Internet's
+{\em adoption of the IPv6 protocol}. In this section, we provide an overview of
+Internet censorship approaches (\Cref{sec:background:censorship}), DNS
+censorship mechanisms and infrastructure (\Cref{sec:background:dns}), and the
+impact of IPv6 on DNS censorship (\Cref{sec:background:ipv6}).
+
+\subsection{Internet censorship}\label{sec:background:censorship}
+
+\para{What constitutes Internet censorship?}
+Internet censorship can be broadly defined as the act of filtering or blocking
+access to Internet content \cite{townsend}. Like previous work, we also use
+this definition when measuring censorship.
+
+\para{Corporate and national censorship.}
+Our working definition of censorship applies to any Internet traffic filtering
+or blocking actions, regardless of the entities that perform them or their purpose for doing so. With a few
+exceptions, much of prior work has largely focused on measuring censorship with
+a presumed attribution of measured events to national content access policies.
+However, it is important to note that corporate censorship, where businesses
+deploy information controls systems to prevent access to specific types of
+content, is also globally prevalent. 
+%
+Throughout our work, we take care to identify when it is likely that our
+measurements are reporting instances of corporate censorship rather than
+national censorship.  This classification is done using Maxmind's Connection
+Type database \cite{maxmind-connectiondb} which characterizes IP end-points as
+`Corporate', `Cable/DSL' (associated typically with residential networks), or
+`Cellular'.
+%
+This distinction is important in order to provide context for some of our
+results. For example, from our study we find that 0.9\% of our tests in the
+United States were censored. Without the additional context that: (1) more that
+50\% of all our measurement vantage points in the US were placed in corporate
+networks and (2) these end-points were responsible for the identified
+censorship events, this finding would be confusing, assumed incorrect, or
+incorrectly attributed to a national censorship policy. 
+
+\para{Internet censorship techniques.} 
+%
+Blocking access to Internet content can occur in a variety of ways and at
+different layers of the networking stack, all of which require the ability to
+monitor network traffic passing through the censor's borders. The simplest and
+most common approaches are: (1) IP-based blocking in which a censor maintains
+blocklists of IP addresses and prevent connections to these IP addresses; (2)
+DNS manipulation where censors inject (when the censor is a man-in-the-middle)
+or return (when the censor is the resolver) incorrect responses to domains that
+are to be censored; and (3) HTTP proxying in which a censor acts as a proxy to
+clients within its border with the intention of blocking access to intercepted
+`unsuitable' content. 
+%
+While these censorship mechanisms are passive and possible to evade, it is
+known that countries such as China have deployed comprehensive censorship
+infrastructure that is capable of active probing, protocol inspection, and
+incorporates multiple approaches for censorship.
+%
+In fact, there has been a large body of work to identify censorship techniques
+globally
+\cite{pearce2017global, niaki2020iclab, scott2016satellite,
+sundara2020censored, filasto2012ooni, pearce2017augur, razaghpanah2016exploring}
+and specific to individual countries \cite{USESEC21:GFWatch, aryan2013internet,
+ramesh2020decentralized, yadav2018light, gebhart2017internet, nabi2013anatomy}.
+%
+Unfortunately, the impact of the growing deployment of IPv6 networks has not
+been previously studied --- leaving gaps in our knowledge of how censors are
+handling the network transition and what opportunities exist for developers of
+circumvention tools. Our work fills this gap by studying how the transition to
+IPv6 impacts DNS censorship mechanisms.
+
+\subsection{DNS censorship}\label{sec:background:dns}
+
+% removing figure for now... needs work
+%\FigDNSCensorship
+
+The Domain Name System (DNS) underpins the global internet by providing
+a mapping from human readable hostnames to routable IP addresses making domain
+name resolution the first step in almost all connection establishment flows.
+However, the widely deployed DNS system is implemented as a plaintext protocol
+allowing on-path eavesdroppers to inspect the hostnames as clients attempt to
+establish connections and in some cases inject falsified responses to interfere.
+
+
+Censors have long been known to use DNS injection to block requests, observing
+DNS requests and injecting false responses for requests to censored domains.
+The Chinese traffic inspection system, called the Great Firewall (GFW), is
+documented injecting falsified DNS responses as early as
+2002~\cite{global2002great}. This censorship has been shown to be a packet
+injection from an on-path adversary monitoring for hostnames in DNS queries
+that match regular expressions~\cite{USESEC21:GFWatch}.
+%Other countries are also observed to perform DNS injection
+
+%\para{Directionality}
+%An on-path censor can observe DNS requests for blocked domains and inject a false
+%response, providing an incorrect answer that beats the correct answer. While
+%censors typically do this on the edge of their
+%network~\cite{xu2011internet} with the goal of blocking requests for users
+%within the country, these systems often work \emph{bidirectionally}, blocking
+%even requests that originate outside the country.
+%
+%However, even if a censor manages to only censor requests from inside the
+%country to the outside, the nature of DNS resolvers allow it to be externally
+%visible. For instance, we can make a request to an in-country resolver, which
+%will in turn send a DNS request to the authoritative nameserver which may be
+%outside the country. If this request is censored
+
+%\para{On-path and in-path DNS censorship.}
+%An on-path censor operates on a copy of the traffic that transits a specific
+%network link. Operating on a copy allows the censor to make deeper inspections
+%on the content of packets and respond accordingly. This approach has the
+%limitation that censors cannot interfere with the packets that have already
+%passed their vantage point. In the context of DNS censorship, on-path censors
+%make censorship decisions based on the copy of a DNS request and inject a false
+%response to the source of the request in the hopes that their response reaches
+%the source before the actual response from a resolver. Because the source will
+%receive a response from the intended resolver as well as the injected response
+%from the censor, on-path censorship can be identified by recording {\em all}
+%DNS response packets that are received to a DNS query for a censored domain.
+%%
+%Another censorship approach is in-path censorship in which a censor makes
+%decisions about dropping or modifying packets on-the-fly and at line rate.
+%Censoring of DNS queries by in-path censors can be identified either by the
+%presence of timeouts (packet drops by censor) or incorrect responses (packet
+%modifications by censors).
+%
+
+\para{Distributed and centralized DNS censorship.}
+In a centralized DNS censorship mechanism, a single entity manages the
+`blocklists' or filter-rules associated with DNS censorship decisions. This is
+the case in countries such as China where traffic inspection devices are housed
+at or near border gateways \cite{xu2011internet}. In contrast, countries such
+as India and Russia are known to delegate censorship orders to regional
+ISPs~\cite{Gosain2017a}
+who may choose to implement them either via DNS (typically by reconfiguring
+their own resolvers) or other censorship approaches
+\cite{ramesh2020decentralized, Yadav2018a, singh2020india}. The latter approach results in
+different implementations of DNS censorship and the possibility for
+inconsistencies across different ISPs.
+
+% Common strategies for measuring censorship via DNS injection involve routing DNS queries for
+% block-listed hostnames across a censoring link in a controlled environment where
+% the returned resource records can be independently validated. Two notable previous
+% studies Satellite and Iris~\cite{scott2016satellite,pearce2017global} identify
+% open DNS resolvers across the internet by scanning the entire IPv4 space on port~53.
+% Satellite probes reliably available open resolvers from a set of distributed vantage
+% points and detects incorrect or inconsistent response information. Iris develops
+% a method for identifying active manipulation in contrast to misconfiguration by
+% leveraging metrics such as consistency and independent verifiability. Iris
+% compares records returned by open resolvers to records returned a set of trusted
+% resolvers matching IP addresses, content hash, TLS certificate, and more.
+% In order to identify open resolvers both Satellite and Iris rely on the zmap
+% internet wide scanning tool~\cite{Durumeric13zmap} limiting themselves to the IPv4 address space.
+% 
+\subsection{IPv6} \label{sec:background:ipv6}
+% The proportion of clients that support IPv6 is rapidly growing, especially in
+% developing areas with newly deployed network infrastructure. According to the
+% APNIC internet registry over a quarter of the users on the internet now route
+% their traffic using IPv6~\cite{Huston-APNIC2021}. Similarly Google metrics
+% indicate that over 50\% of users access services using IPv6 in India, Saudi
+% Arabia, Germany and several other countries~\cite{Google-IPv6}. 
+
+\para{IPv6 6to4 bridges.}
+As more IPv6-only network connected devices emerge, there is an increasing need
+for technologies that facilitate communication betweeb IPv4 and IPv6
+end-points. One such technology is 6to4 bridging. The 6to4 protocol was
+originally designed as a mechanism to bridge the IPv6 deployment gap as public
+6to4 bridges would provide interoperability to legacy systems such that IPv4
+services could communicate with IPv6 networks and vice-versa. The protocol
+works by assigning a \texttt{/48} subnet with the encoded local address to an
+interface then allowing that interface to receive traffic encapsulated in an
+IPv4 header at the local address. In this way clients without outgoing
+connection to an IPv6 capable network can send IPv6 packets over to an IPv6
+capable host who forwards them onward. In our study, we come across many
+vantage points which are IPv6 connected via a 6to4 bridge. These are easily
+identifiable since their IPv6 addresses are drawn from the \texttt{2002::/16}
+address block \cite{RFC3056}.
+%
+In the context of DNS, sending a DNS request over IPv6 to
+\texttt{2002:0102:0304::} will send an \texttt{[IPv6|UDP|DNS]} packet over IPv6
+to the 6to4 gateway at that address which will then encapsulate the packet in
+IPv4 to 1.2.3.4 (whose 32-bit address is encoded in the IPv6 address
+\texttt{0102:0304}) in order to transit a portion of the network with no
+connectivity. For this portion of the journey the packet is
+\texttt{[IPv4|IPv6|UDP|DNS]} until it reaches the destination or another
+network capable of routing IPv6 packets.
+
+
+\para{The impact of IPv6 on DNS censorship.}
+As with other critical protocols, DNS has also adapted to the IPv6 protocol.
+The {\tt AAAA} resource record type was introduced to aid in the resolution of
+domains to their IPv6 addresses. Further, the existing DNS protocol is
+IP-independent and can therefore be deployed on IPv4 and IPv6 networks.
+Therefore, it is now possible and common for IPv4 and IPv6-hosted DNS servers
+to receive both {\tt A} and {\tt AAAA} queries. This is in contrast to
+a IPv4-dominant Internet where {\tt A} queries to IPv4 resolvers were the norm.
+The changes outlined above also influence the mechanics and success of DNS
+censorship operations. A theoretically comprehensive DNS censorship strategy
+using response injection requires traffic monitoring infrastructure to: (1)
+analyze both IPv4 and IPv6 traffic and (2) parse both \texttt{A} and
+\texttt{AAAA} queries accounting for hostnames that may not implement resource
+records of one type or the other. 
+%
+Our work provides a snapshot documentation of contemporary
+censorship strategies through the IPv6 transition.
+
+
+%In addition to helping
+%circumvention tool developers exploit weaknesses made available through this
+%transition, this work also improves our understanding of the reactiveness of
+%network censorship more broadly.
+% 
+% Such a strategy would only impede connections that use plaintext DNS (as outlined in the 
+% original specifications~\cite{RFC1035,RFC3596}) - it would not effect more secure DNS
+% protocols such as DoT, DoH, or censorship resistance strategies which are not
+% covered in this work.
+% 
+% Internet infrastructure is evolving to accommodate global connectivity as well
+% -- IPv6 deployment provides routable addressing to an increasing portion of
+% the internet as IPv4 allocations become scarce. Effective censorship strategies
+% attempting to control or limit accessibility have to keep up.
+% Censorship strategies are capable of reactive change as demonstrated by
+% the impact that real world events like elections~\cite{aryan2013internet},
+% social or political unrest~\cite{shandler2018measuring,padmanabhan2021multi},
+% and specifically crafted circumvention tools~\cite{beznazwy2020china}
+% have on blocking techniques and block-lists. Documenting contemporary censorship
+% strategies through the transition from IPv4 to IPv6 can help to understand the
+% the trajectory of network censorship efforts more broadly.
+% 
+% %% Are there appliances that inject responses to AAAA requests upon seeing a
+% %% block-listed domain name where the actual site doesn't support IPv6 - and
+% %% should never provide AAAA records in response?
+% \textbf{Discovering Dual-Stack Open Resolvers.}
+% Hendricks et al. describe in depth a method for discovering and validating DNS
+% resolvers that expose both IPv4 and IPv6 interfaces~\cite{hendriks2017potential}.
+% They start with an initial
+% set of IPv4 resolvers discovered using zmap. This set is then sent a query for a
+% specially crafted domain containing a subdomain whose nameserver supports only
+% IPv6. In an attempt to recursively resolve the domain the resolver will connect
+% to the controlled nameserver using an IPv6 address if one is available.
+% Subsequent queries are then used to identify configurations that forward or
+% distribute queries indicating address pairs that are not truly dual-stack resolvers.
+% 
+% Our work combines these strategies to investigate the global prevalence of DNS
+% injection in IPv6.

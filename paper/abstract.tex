@@ -1,0 +1,22 @@
+Internet censorship impacts large segments of the Internet, but so far, prior
+work has focused almost exclusively on performing measurements using IPv4. As
+the Internet grows, and more users connect, IPv6 is increasingly supported and
+available to users and servers alike. But despite this steady growth, it remains
+unclear if the information control systems that implement censorship (firewalls,
+deep packet inspection, DNS injection, etc) are as effective with IPv6 traffic
+as they are with IPv4.
+
+In this paper, we perform the first global measurement of DNS censorship on the
+IPv6 Internet. Leveraging a recent technique that allows us to discover
+IPv6-capable open resolvers (along with their corresponding IPv4 address), we
+send over 20~million {\tt A} and {\tt AAAA} DNS requests to DNS resolvers
+worldwide, and measure the rate at which they block, at the resolver, network,
+and country level as well examine the characteristics of blocked domains.
+%
+We observe that while nearly all censors support blocking IPv6, their policies
+are inconsistent with and frequently less effective than their IPv4 censorship
+infrastructure. Our results suggest that supporting IPv6 censorship is not
+all-or-nothing: many censors support it, but poorly.  As a result, these censors
+may have to expend additional resources to bring IPv6 censorship up to parity
+with IPv4. In the meantime, this affords censorship circumvention researchers a
+new opportunity to exploit these differences to evade detection and blocking.

@@ -1,0 +1,293 @@
+\section{Censorship of IPv4 and IPv6 Resolvers}
+\label{sec:infrastructure}
+
+\para{Overview.} In this section, we focus on the difference in censorship
+for DNS queries sent to the \textbf{IPv4 and IPv6 interfaes of resolvers}.
+%
+Specifically, we answer the following questions:
+%
+(\Cref{sec:infrastructure:country}) In which countries are the DNS censorship
+mechanisms for IPv4 and IPv6 traffic significantly different?,
+%
+(\Cref{sec:infrastructure:resolvers}) what are the characteristics of resolvers
+that exhibit differences in the censorship of IPv4 and IPv6 traffic?, and
+%
+(\Cref{sec:infrastructure:domains}) what are the characteristics of the domains
+in which such differences are frequently exhibited?
+
+% \subsection{Within-country differences in the censorship of IPv4 and IPv6 DNS
+\subsection{IPv4 vs IPv6 infrastructure censorship} \label{sec:infrastructure:country}
+
+%We use the responses received from the IPv4 and IPv6 interfaces of each of the
+%resolvers in our dataset for the same set of domains. We then apply the
+%censorship detection mechanism detailed in \Cref{sec:methodology:censorship} to
+%measure the prevalence of DNS censorship of queries sent over IPv4 and IPv6.
+%Finally, we perform statistical tests to identify the countries that have
+%significant differences in their censorship of IPv4 and IPv6 DNS traffic.
+
+%\para{Identifying differences within a country.} 
+%
+To measure differences in censorship of DNS queries sent over IPv4 and IPv6 we
+examine distributions similar to \Cref{sec:resources:country} but this time
+investigate two distributions (corresponding to the IPv4 and IPv6 interfaces of
+resolvers) of the fraction of censored domains from resolvers within the
+corresponding country.
+%
+We again use a two-sample $t$-test to with \Sidak correction ($p \leq
+1-{.05}^{1/n_{c}}$, where $n_c$ is
+the total number of countries in our dataset (106)) to verify statistical
+significance of any observed differences.
+%between the two groups for each country and apply a \Sidak
+%correction to control for Type I errors from multiple hypothesis testing. 
+%
+%
+The presence of a statistically significant difference for a specific country
+would imply that the country appears to have different censorship mechanisms
+for IPv4 and IPv6 DNS traffic (if a centralized mechanism for censorship
+exists) or that a significant number of resolvers within that country are not
+consistent in their censorship of IPv6 and IPv4 traffic.
+%
+A summary of our results are presented in \Cref{tab:infrastructure:countries}.
+
+\para{Which countries demonstrate large-scale inconsistencies in their
+handling of IPv4 and IPv6 DNS traffic?}
+%
+In total, we find only five countries (Thailand, Iran, Bangladesh, Myanmar, and
+the United States) with statistically significant differences in their handling
+of DNS queries over IPv4 and IPv6 traffic --- suggesting the use of independent
+censorship mechanisms for IPv4 and IPv6. 
+%
+Interestingly, all these countries appear to have gaps in their IPv6 censorship
+apparatus --- \ie IPv4 rates of blocking are higher than IPv6 rates in all
+countries with significant differences. These differences result in IPv6
+queries experiencing between 12\% and 78\% less censorship than their IPv4
+counterparts.
+%
+Once again, this suggests a tendency for network operators to more effectively
+maintain IPv4 DNS censorship infrastructure than IPv6 infrastructure. These
+gaps present opportunities for the success of circumvention tools with IPv6
+capabilities.  
+%
+Further analysis shows that these differences primarily apply to {\tt A}
+queries, suggesting that these countries fail to censor most {\tt A} queries
+when they are sent over IPv6, but that they are able to censor
+{\tt AAAA} records sent over IPv6 effectively.
+%
+%but not {\tt A} queries sent over IPv6. %This could be due to parsing
+%assumptions that a censor's middlebox makes (e.g. that {\tt A} records should
+%only appear in IPv4 traffic). These findings are particularly noteworty for
+%circumvention efforts in Thailand, Myanmar, and Iran where IPv6 adoptoin rates
+%are high~\cite{Google-IPv6}.
+%Further analysis shows that these differences primarily arise due to the fact
+%that DNS type {\tt A} queries are significantly more likely to be blocked over
+%IPv4 connections than over an IPv6 connection. However, this is not the case
+%for {\tt AAAA} queries, with the exception of Iran.
+%
+%aken together, 
+These findings are particularly noteworthy for circumvention
+efforts in Thailand, Myanmar, and Iran where IPv6 adoption rates are high
+(between 15\% and 45\%) and dual-stack tools may be used for circumvention of
+DNS censorship.
+%
+
+\begin{table}[t]
+  \centering
+  \small
+  \scalebox{\tabularscale} {
+  \begin{tabular}{lccc}%p{.9in}p{.9in}}
+    \toprule
+    {\bf Country}&{\bf {\tt A} queries }&{\bf {\tt AAAA} queries} & {\bf All queries}
+    \\ \midrule
+    Thailand (TH)      & -7.1 pp (-86.3\%) & $ns$              & -3.7 pp (-78.1\%) \\
+    Iran (IR)          & -3.2 pp (-12.6\%) & -3.0 pp (-12.5\%) & -3.1 pp (-12.5\%) \\ 
+    Bangladesh (BD)    & -5.5 pp (-86.1\%) & $ns$              & -3.0 pp (-77.9\%) \\
+    Myanmar (MY)       & -3.6 pp (-74.2\%) & $ns$              & -2.1 pp (-62.3\%) \\
+    United States (US) & -0.9 pp (-64.8\%) & $ns$              & -0.5 pp (-42.6\%) \\
+    \midrule
+    Korea (KR)         & -1.1pp (-46.5\%) & $ns$    & $ns$ \\
+    Chile (CL)         & -1.6pp (-58.7\%)  & $ns$    & $ns$ \\
+    \bottomrule
+  \end{tabular}
+  }
+  \caption{Differences in blocking rates of DNS queries sent to IPv4 and IPv6
+  interfaces of each resolver in a country. `pp' denotes the change in
+  terms of percentage points (computed as blocking rate of IPv6 - blocking
+  rate of IPv4) and the \%age value denotes the percentage change in blocking rate
+  (computed as 
+  $
+  100 \times \frac{\text{IPv6 blocking rate} - \text{IPv4 blocking rate}}
+  {\text{IPv4 blocking rate}}
+  $). 
+  Only countries having a statistically significant difference are reported. A
+  negative value indicates that queries sent over IPv4 observed higher blocking
+  rates than those sent over IPv6 in a given country. $ns$ indicates the
+  difference was not statistically significant and thus omitted. Korea and Chile
+  are included separately as they demonstrated significant difference in
+  \texttt{A}/\texttt{AAAA} censorship (\Cref{sec:resources:country}).}
+  \label{tab:infrastructure:countries}
+\end{table}
+
+% \subsection{Characteristics of IPv4/IPv6-inconsistent resolvers}
+\subsection{IPv4/IPv6-inconsistent resolvers}
+\label{sec:infrastructure:resolvers}
+%
+
+Next, we look at the characteristics of resolver pairs that see inconsistent
+censorship on their IPv4 and IPv6 interfaces. 
+
+%Our previous results demonstrate the promise of using IPv6 channels for DNS
+%resolution to bypass IPv4 DNS censorship. We now focus on identifying the
+%distribution and connection-type of resolvers demonstrating inconsistencies in
+%their handling of IPv4 and IPv6 traffic. This serves two purposes:
+%%
+%First, our analysis on the distribution of IPv4/IPv6-inconsistent resolvers
+%provides evidence-driven hypotheses about how information control deployments
+%are structured in different countries. 
+%%
+%Second, studying the connection-types of IPv4/IPv6-inconsistent resolvers sheds
+%light on whether the gaps in censorship are visible to users in residential
+%networks. This serves as an indicator for the potential gains to be had by
+%circumvention tools that begin exploiting the IPv4/IPv6 gap.
+%
+\para{Identifying IPv4/IPv6-inconsistent resolvers.} Our approach is similar to
+the methods used to identify {\tt A/AAAA}-inconsistent resolvers
+(\cf \Cref{sec:resources:resolvers}). 
+%
+We compare the ratios of censored responses received from a single resolver
+pair's IPv4 and IPv6 interfaces. We test whether these ratios are statistically
+different using a $z$-test with a \Sidak corrected $p \leq 1-.05^{1/n_{r_c}}$
+being required for a statistically significant difference. 
+%
+A summary of the characteristics of the inconsistent resolvers identified in
+each country is illustrated in \Cref{tab:infrastructure:resolvers}.
+
+\para{Which countries have the largest fraction of IPv4/IPv6-inconsistent
+resolvers?}
+%
+Two countries from our previous analysis on {\tt A/AAAA}-inconsistencies once
+again appear with a large fraction of IPv4/IPv6-inconsistent resolvers ---
+Thailand (81\%) and Bangladesh (65\%). Myanmar presents a new addition with
+60\% of its resolvers demonstrating IPv4/IPv6-inconsistencies. Other countries
+were found to have smaller fractions ranging from 12-26\%.
+
+\para{How spread out are the IPv4/IPv6-inconsistent resolvers?}
+%
+In order to characterize the spread of IPv4/IPv6-inconsistent resolvers within
+a country, we compute the entropy of the AS distribution of all resolvers and
+IPv4/IPv6-inconsistent resolvers within a country
+($S^{\text{all}}_{\text{net}}$ and $S^{\text{inconsistent}}_{\text{net}}$) and
+then compute the KL-divergence of the distribution of inconsistent resolvers
+from the distribution of all resolvers in that country ($\nabla_{net}$).
+%
+Similar to before, a large change in $\nabla_{net}$ means that the
+IPv4/IPv6-inconsistencies arise from a small fraction of ASes and would suggest
+that the gaps exist due to local network/resolver configurations --- as
+would be the case if regional operators implement their own DNS censorship
+mechanisms. Conversely, a small change means that the gaps that exist roughly
+equally impact all the ASes having resolvers and would suggest that the gaps
+exist due to misconfigurations in a centralized DNS censorship mechanism.
+%
+Our results again suggest the presence of a centralized blocking mechanism
+in Thailand, Bangladesh, and Myanmar ($\nabla_{net} \in [0.13, 0.48]$) which
+causes the IPv4/IPv6-inconsistencies. The United States has the highest
+$\nabla_{net}$ observed which indicates that regional policies are responsible
+for the IPv4/IPv6-inconsistencies. 
+
+\para{What types of networks exhibit the most IPv4 and IPv6 inconsistencies?}
+%
+An overwhelming majority of the inconsistent resolvers in Thailand, Iran, and
+Bangladesh (77\%-100\%) are found to be present in networks with (Maxmind
+categorized) Cable/DSL connection-types that are typically associated with
+residential networks. 
+%
+Put in the context of our previous result which suggests the presence of
+a centralized DNS censorship mechanism in Thailand and Bangladesh, this
+suggests that the IPv4/IPv6 gaps that exist in this mechanism also extend to
+residential networks in the country.
+%
+Myanmar and the United States experience such inconsistencies primarily due to
+their corporate networks which contain between 67-87\% of their inconsistent
+resolvers. 
+
+\begin{table*}[t]
+  \centering
+  \small
+  \scalebox{\tabularscale} {
+    \begin{tabular}{lcclcccl}
+    \toprule
+      {\bf Country} & {\bf Total pairs} & {\bf Inconsistent pairs} & {\bf Most inconsistent AS} & \multicolumn{3}{c}{\bf AS diversity} & {\bf Most inconsistent type} \\
+      & & {(\% of total pairs)}& {(\# inconsistent pairs)}
+      & $S^{\text{all}}_{\text{net}}$ & $S^{\text{inconsistent}}_{\text{net}}$
+      & $\nabla_{\text{net}}$  & {(\# inconsistent pairs)} \\
+      \midrule
+      Thailand (TH)            & 186    & 151 (81.2\%)  & AS 9835 Government IT Services (39)  & 4.50 & 4.10 & 0.13 & Cable/DSL (108) \\
+      Iran (IR)                & 277    & 74 (26.7\%)   & AS 208161 PARSVDS (11)               & 5.03 & 3.81 & 0.87 & Cable/DSL (57) \\
+      Bangladesh (BD)          & 29     & 19 (65.2\%)   & AS 9230 Bangladesh Online (4)        & 4.10 & 3.72 & 0.39 & Cable/DSL (19) \\
+      Myanmar (MY)             & 50     & 30 (60.0\%)   & AS 136170 Exabytes Network (10)      & 3.31 & 2.42 & 0.48 & Corporate (26) \\
+      United States (US)       & 1,228  & 151 (12.3\%)  & AS 30457 WEHOSTWEBSITES (36)         & 6.28 & 5.22 & 1.44 & Corporate (102) \\
+      \midrule                 
+      Korea (KR)               & 632    & 101 (16.0\%)  & AS 9848 Sejong Telecom (13)          & 3.12 & 4.14 & 0.95 & Cable/DSL (73)   \\
+      Chile (CL)               & 65     & 16 (24.6\%)   & AS 27651 Entel Chile (12)            & 3.08 & 1.19 & 1.04 & Corporate (11) \\
+    \bottomrule
+  \end{tabular}
+  }
+  \caption{Characteristics of the resolvers which demonstrated a statistically
+  significant difference in their handling of DNS queries over IPv4 and IPv6
+  each country.
+  %
+  `AS diversity' denotes the entropies of (all) resolver distribution
+  ($S^{\text{all}}_{\text{net}}$) and {IPv4/IPv6}-inconsistent resolver
+  distribution ($S^{\text{inconsistent}}_{\text{net}}$) across a country's
+  ASes, and `$\nabla_{\text{net}}$' represents the Kullback-Leibler divergence
+  of the distribution of inconsistent resolvers from the distribution of all
+  resolvers in the country's ASes (\cf \Cref{sec:infrastructure:resolvers}).
+  %
+  `Most inconsistent type' denotes the connection type with the most number of
+  {IPv4/IPv6}-inconsistent resolvers.Korea and Chile are included separately as
+  they demonstrated significant difference in \texttt{A}/\texttt{AAAA}
+  censorship (\Cref{sec:resources:country}).}
+  \label{tab:infrastructure:resolvers}
+\end{table*}
+
+\subsection{Characterization of anomalous domains}
+\label{sec:infrastructure:domains}
+We now seek to understand the category of domains that get through the
+infrastructural gap between DNS queries over IPv4 and IPv6. In other words,
+does the category of domain influence whether or not there is a difference in
+censorship between IPv4 and IPv6 interfaces?
+%We provide a general
+%categorization of these domains and further compare this category distribution
+%with that of domains that received any blocking. We do this in order to identify
+%specific mechanisms that might differ for censorship of certain categories over
+%IPv4 and IPv6.
+
+\para{Identifying differences in domain behaviors within a country}
+We use an approach similar to the one defined in \Cref{sec:resources:domains}
+for identifying domains that get through the gap in between IPv4 and IPv6. For
+each domain, we measure the ratio of blocking that occurs over IPv4 and IPv6. We
+then apply the $z$-test with a corrected $p$-value (as described in
+\Cref{sec:resources:domains}) to these ratios. This gives us all domains which
+had significant differences in censorship over IPv4 and IPv6.
+
+\para{Do these IPv4/IPv6-inconsistent domains hint at policy gaps?}
+For each country, we derive domain categories for the following two lists; (1)
+$\text{D}_{\text{any}}$ which contains the domains which experienced any
+blocking events inside a country and (2) $\text{D}_{\text{inconsistent}}$ which
+contains the IPv4- and IPv6-inconsistent domains identified by our $z$-test. We
+again used KL-divergence between to compare these two category distributions. A
+small $\nabla_{\text{net}}^{\text{domains}}$ would signify that the two
+category distributions are not largely different suggesting the policy gap over
+IPv4/IPv6 is not content specific; A large
+$\nabla_{\text{net}}^{\text{domains}}$ would signify that the category
+distributions are indeed very different suggesting a content-based policy gap.
+\\
+Based on this analysis, we see that Bangladesh, US and Iran have the smallest
+$\nabla_{\text{net}}^{\text{domains}}$ scores (0-1.3) suggesting that there
+was little to no difference in the distribution of the two categories. This
+suggests that for these countries, there is no content-based policy gaps. On the
+other hand, Pakistan, China and Myanmar had the highest
+$\nabla_{\text{net}}^{\text{domains}}$ scores (2.7-4.3). These scores suggest
+that some categories of domains get through the IPv4/IPv6 censorship gap much
+more than others. "Gambling" is the category most likely to get through this gap
+for China and Pakistan and "Government/Military" is the most likely to get
+through this gap in Iran. 
