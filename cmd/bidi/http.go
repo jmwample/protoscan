@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"math/rand"
 	"net"
 	"os"
 	"time"
@@ -21,8 +20,6 @@ const httpFmtStr = "GET / HTTP/1.1\r\nHost: %s\r\nUser-Agent: %s\r\nAccept: */*\
 
 type httpProber struct {
 	device string
-	seed   int64
-	r      *rand.Rand
 
 	// sendSynAndAck sends a syn and an ack packet as a pseudo prelude to a TCP
 	// session in order to trigger censorship responses from middlebloxes expecting
@@ -49,7 +46,7 @@ func (p *httpProber) sendProbe(ip net.IP, name string, lAddr string, verbose boo
 	}
 
 	addr := net.JoinHostPort(ip.String(), "80")
-	return sendTCP(addr, out, lAddr, p.device, p.r, p.synDelay, p.sendSynAndAck, p.checksums, verbose)
+	return sendTCP(addr, out, lAddr, p.device, p.synDelay, p.sendSynAndAck, p.checksums, verbose)
 }
 
 func (p *httpProber) handlePcap(iface string) {

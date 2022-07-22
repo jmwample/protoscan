@@ -1,5 +1,5 @@
 
-# Bidirectional DNS Scanner
+# Bidirectional Censorship Protocol Scanner
 
 Send packets to addresses that should not respond on UDP 53 _FAST_.
 

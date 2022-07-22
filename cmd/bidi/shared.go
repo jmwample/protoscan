@@ -72,7 +72,7 @@ func sendUDP(dst string, payload []byte, lAddr string, verbose bool) error {
 	return nil
 }
 
-func sendTCP(dst string, payload []byte, lAddr, device string, r *rand.Rand, synDelay time.Duration, sendSynAck, checksums, verbose bool) error {
+func sendTCP(dst string, payload []byte, lAddr, device string, synDelay time.Duration, sendSynAck, checksums, verbose bool) error {
 
 	host, portStr, err := net.SplitHostPort(dst)
 	if err != nil {
@@ -99,9 +99,9 @@ func sendTCP(dst string, payload []byte, lAddr, device string, r *rand.Rand, syn
 	}
 
 	// Pick a random source port between 1000 and 65535
-	randPort := (r.Int31() % 64535) + 1000
-	seq := r.Uint32()
-	ack := r.Uint32()
+	randPort := (rand.Int31() % 64535) + 1000
+	seq := rand.Uint32()
+	ack := rand.Uint32()
 
 	// Fill TCP  Payload layer details
 	tcpLayer := layers.TCP{

@@ -92,37 +92,25 @@ func main() {
 		panic("unknown probe type")
 	}
 
+	if *seed == -1 {
+		rand.Seed(int64(time.Now().Nanosecond()))
+	} else {
+		rand.Seed(*seed)
+	}
+
 	switch prober := p.(type) {
 	case *httpProber:
 		prober.device = *iface
-		if *seed == -1 {
-			prober.seed = int64(time.Now().Nanosecond())
-		} else {
-			prober.seed = *seed
-		}
-		prober.r = rand.New(rand.NewSource(prober.seed))
 		prober.sendSynAndAck = !*noSynAck
 		prober.synDelay = *synDelay
 		prober.checksums = !*noChecksums
 	case *tlsProber:
 		prober.device = *iface
-		if *seed == -1 {
-			prober.seed = int64(time.Now().Nanosecond())
-		} else {
-			prober.seed = *seed
-		}
-		prober.r = rand.New(rand.NewSource(prober.seed))
 		prober.sendSynAndAck = !*noSynAck
 		prober.synDelay = *synDelay
 		prober.checksums = !*noChecksums
 	case *quicProber:
 		prober.device = *iface
-		if *seed == -1 {
-			prober.seed = int64(time.Now().Nanosecond())
-		} else {
-			prober.seed = *seed
-		}
-		prober.r = rand.New(rand.NewSource(prober.seed))
 	}
 
 	// Parse domains
