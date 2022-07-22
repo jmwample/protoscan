@@ -21,5 +21,5 @@ injection in both IPv4 and IPv6.
 See the Readme in `cmd/bidi/` for more details on usage.
 
 ```sh
-echo "52.44.73.6" | sudo ./bidi-http -type http -iface "wlo1" -domains domains.txt -workers 1 -wait 1s
+echo "52.44.73.6" | sudo ./bidi -type http -iface "wlo1" -domains domains.txt -workers 1 -wait 1s
 ```
