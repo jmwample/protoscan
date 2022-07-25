@@ -31,7 +31,13 @@ func (p *dnsProber) sendProbe(ip net.IP, name string, lAddr string, verbose bool
 	}
 
 	addr := net.JoinHostPort(ip.String(), "53")
-	return sendUDP(addr, out, lAddr, verbose)
+
+	err = sendUDP(addr, out, lAddr, verbose)
+	if err == nil && verbose {
+		log.Printf("Sent %s %s %s\n", ip.String(), name, hex.EncodeToString(out))
+	}
+
+	return err
 }
 
 func (p *dnsProber) buildPayload(name string) ([]byte, error) {

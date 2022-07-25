@@ -16,8 +16,6 @@ type prober interface {
 
 	sendProbe(ip net.IP, name string, lAddr string, verbose bool) error
 
-	buildPayload(name string) ([]byte, error)
-
 	handlePcap(iface string)
 }
 

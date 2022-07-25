@@ -46,7 +46,12 @@ func (p *httpProber) sendProbe(ip net.IP, name string, lAddr string, verbose boo
 	}
 
 	addr := net.JoinHostPort(ip.String(), "80")
-	return sendTCP(addr, out, lAddr, p.device, p.synDelay, p.sendSynAndAck, p.checksums, verbose)
+	seqAck, err := sendTCP(addr, out, lAddr, p.device, p.synDelay, p.sendSynAndAck, p.checksums, verbose)
+	if err == nil && verbose {
+		log.Printf("Sent %s %s %s\n", ip.String(), name, seqAck)
+	}
+
+	return err
 }
 
 func (p *httpProber) handlePcap(iface string) {

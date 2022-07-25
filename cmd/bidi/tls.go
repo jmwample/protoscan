@@ -40,7 +40,12 @@ func (p *tlsProber) sendProbe(ip net.IP, name string, lAddr string, verbose bool
 	}
 
 	addr := net.JoinHostPort(ip.String(), "443")
-	return sendTCP(addr, out, lAddr, p.device, p.synDelay, p.sendSynAndAck, p.checksums, verbose)
+	seqAck, err := sendTCP(addr, out, lAddr, p.device, p.synDelay, p.sendSynAndAck, p.checksums, verbose)
+	if err == nil && verbose {
+		log.Printf("Sent %s %s %s\n", ip.String(), name, seqAck)
+	}
+
+	return err
 }
 
 func (p *tlsProber) buildPayload(name string) ([]byte, error) {

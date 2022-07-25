@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
-	"log"
 	"math/rand"
 	"net"
 	"strconv"
@@ -65,18 +64,14 @@ func sendUDP(dst string, payload []byte, lAddr string, verbose bool) error {
 	defer conn.Close()
 
 	conn.Write(payload)
-	if verbose {
-		log.Printf("Sent %s - %s\n", dst, hex.EncodeToString(payload))
-	}
-
 	return nil
 }
 
-func sendTCP(dst string, payload []byte, lAddr, device string, synDelay time.Duration, sendSynAck, checksums, verbose bool) error {
+func sendTCP(dst string, payload []byte, lAddr, device string, synDelay time.Duration, sendSynAck, checksums, verbose bool) (string, error) {
 
 	host, portStr, err := net.SplitHostPort(dst)
 	if err != nil {
-		return fmt.Errorf("failed to parse \"ip:port\": %s - %s", dst, err)
+		return "", fmt.Errorf("failed to parse \"ip:port\": %s - %s", dst, err)
 	}
 	port, _ := strconv.Atoi(portStr)
 
@@ -90,12 +85,12 @@ func sendTCP(dst string, payload []byte, lAddr, device string, synDelay time.Dur
 
 	localIface, err := net.InterfaceByName(device)
 	if err != nil {
-		return fmt.Errorf("bad device name: \"%s\"", device)
+		return "", fmt.Errorf("bad device name: \"%s\"", device)
 	}
 
 	localIP, err := getSrcIP(localIface, lAddr, ip)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// Pick a random source port between 1000 and 65535
@@ -113,13 +108,14 @@ func sendTCP(dst string, payload []byte, lAddr, device string, synDelay time.Dur
 		Seq:     seq + 1,
 		Ack:     ack,
 	}
+	seqAck := fmt.Sprintf("%x %x", seq+1, ack)
 
 	// Fill out IP header with source and dest
 	var ipLayer gopacket.SerializableLayer
 	var networkLayer gopacket.NetworkLayer
 	if useV4 {
 		if localIP.To4() == nil {
-			return fmt.Errorf("v6 src for v4 dst")
+			return "", fmt.Errorf("v6 src for v4 dst")
 		}
 		ipLayer4 := &layers.IPv4{
 			SrcIP:    localIP,
@@ -132,7 +128,7 @@ func sendTCP(dst string, payload []byte, lAddr, device string, synDelay time.Dur
 		ipLayer = ipLayer4
 	} else {
 		if localIP.To4() != nil {
-			return fmt.Errorf("v4 src for v6 dst")
+			return "", fmt.Errorf("v4 src for v6 dst")
 		}
 		ipLayer6 := &layers.IPv6{
 			SrcIP:      localIP,
@@ -151,23 +147,23 @@ func sendTCP(dst string, payload []byte, lAddr, device string, synDelay time.Dur
 	ipHeaderBuf := gopacket.NewSerializeBuffer()
 	err = ipLayer.SerializeTo(ipHeaderBuf, options)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// build syn, ack, and data payloads
 	synBuf, err := getSyn(uint32(randPort), uint32(port), seq, options, networkLayer)
 	if err != nil {
-		return err
+		return "", err
 	}
 	ackBuf, err := getAck(uint32(randPort), uint32(port), seq+1, ack, options, networkLayer)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	tcpPayloadBuf := gopacket.NewSerializeBuffer()
 	err = gopacket.SerializeLayers(tcpPayloadBuf, options, &tcpLayer, gopacket.Payload(payload))
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// XXX end of packet creation
@@ -176,33 +172,35 @@ func sendTCP(dst string, payload []byte, lAddr, device string, synDelay time.Dur
 	if useV4 {
 		packetConn, err := net.ListenPacket("ip4:tcp", "")
 		if err != nil {
-			return fmt.Errorf("failed to listen on ipv4: %s", err)
+			return "", fmt.Errorf("failed to listen on ipv4: %s", err)
 		}
+		defer packetConn.Close()
+
 		ipHeader, err := ipv4.ParseHeader(ipHeaderBuf.Bytes())
 		if err != nil {
-			return fmt.Errorf("failed to parse ipv4 header: %s", err)
+			return "", fmt.Errorf("failed to parse ipv4 header: %s", err)
 		}
 		rawConn, err := ipv4.NewRawConn(packetConn)
 		if err != nil {
-			return fmt.Errorf("failed to create ipv4 rawconn: %s", err)
+			return "", fmt.Errorf("failed to create ipv4 rawconn: %s", err)
 		}
 
 		if sendSynAck {
 			err = rawConn.WriteTo(ipHeader, synBuf, nil)
 			if err != nil {
-				return fmt.Errorf("failed to write syn: %s", err)
+				return "", fmt.Errorf("failed to write syn: %s", err)
 			}
 			time.Sleep(synDelay)
 
 			err = rawConn.WriteTo(ipHeader, ackBuf, nil)
 			if err != nil {
-				return fmt.Errorf("failed to write ack: %s", err)
+				return "", fmt.Errorf("failed to write ack: %s", err)
 			}
 		}
 
 		err = rawConn.WriteTo(ipHeader, tcpPayloadBuf.Bytes(), nil)
 		if err != nil {
-			return fmt.Errorf("failed to write payload: %s", err)
+			return "", fmt.Errorf("failed to write payload: %s", err)
 		}
 	} else {
 		// golang/x/net/ipv6 does not provide a RawConn option because: " Unlike
@@ -221,43 +219,40 @@ func sendTCP(dst string, payload []byte, lAddr, device string, synDelay time.Dur
 
 		packetConn, err := net.ListenPacket("ip6:tcp", "")
 		if err != nil {
-			return fmt.Errorf("failed to listen on ipv6: %s", err)
+			return "", fmt.Errorf("failed to listen on ipv6: %s", err)
 		}
+		defer packetConn.Close()
 
 		pktConn := ipv6.NewPacketConn(packetConn)
 		if pktConn == nil {
-			return fmt.Errorf("unable to create IPv6 packet conn")
+			return "", fmt.Errorf("unable to create IPv6 packet conn")
 		}
 
 		err = pktConn.SetControlMessage(ipv6.FlagDst|ipv6.FlagSrc, true)
 		if err != nil {
-			return fmt.Errorf("failed to set control flags: %s", err)
+			return "", fmt.Errorf("failed to set control flags: %s", err)
 		}
 
 		if sendSynAck {
 			_, err = pktConn.WriteTo(synBuf, cm, addr)
 			if err != nil {
-				return fmt.Errorf("failed to write syn: %s", err)
+				return "", fmt.Errorf("failed to write syn: %s", err)
 			}
 			time.Sleep(synDelay)
 
 			_, err = pktConn.WriteTo(ackBuf, cm, addr)
 			if err != nil {
-				return fmt.Errorf("failed to write ack: %s", err)
+				return "", fmt.Errorf("failed to write ack: %s", err)
 			}
 		}
 
 		_, err = pktConn.WriteTo(tcpPayloadBuf.Bytes(), cm, addr)
 		if err != nil {
-			return fmt.Errorf("failed to write payload: %s", err)
+			return "", fmt.Errorf("failed to write payload: %s", err)
 		}
 	}
 
-	if verbose {
-		log.Printf("Sent %s - %s\n", ip.String(), hex.EncodeToString(payload))
-	}
-
-	return nil
+	return seqAck, nil
 }
 
 func getSyn(srcPort, dstPort, seq uint32, options gopacket.SerializeOptions, ipLayer gopacket.NetworkLayer) ([]byte, error) {

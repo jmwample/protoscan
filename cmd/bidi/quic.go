@@ -34,16 +34,23 @@ func (p *quicProber) registerFlags() {
 
 func (p *quicProber) sendProbe(ip net.IP, name string, lAddr string, verbose bool) error {
 
-	out, err := p.buildPayload(name)
+	out, clientID, err := p.buildPayload(name)
 	if err != nil {
 		return fmt.Errorf("failed to build quic payload: %s", err)
 	}
 
 	addr := net.JoinHostPort(ip.String(), "443")
-	return sendUDP(addr, out, lAddr, verbose)
+
+	err = sendUDP(addr, out, lAddr, verbose)
+
+	if verbose {
+		log.Printf("Sent %s %s %s\n", ip.String(), name, clientID)
+	}
+
+	return err
 }
 
-func (p *quicProber) buildPayload(name string) ([]byte, error) {
+func (p *quicProber) buildPayload(name string) ([]byte, string, error) {
 	// var fullData = "cd0000000108000102030405060705635f636964004103981c36a7ed78716be9711ba498b7ed868443bb2e0c514d4d848eadcc7a00d25ce9f9afa483978088de836be68c0b32a24595d7813ea5414a9199329a6d9f7f760dd8bb249bf3f53d9a77fbb7b395b8d66d7879a51fe59ef9601f79998eb3568e1fdc789f640acab3858a82ef2930fa5ce14b5b9ea0bdb29f4572da85aa3def39b7efafffa074b9267070d50b5d07842e49bba3bc787ff295d6ae3b514305f102afe5a047b3fb4c99eb92a274d244d60492c0e2e6e212cef0f9e3f62efd0955e71c768aa6bb3cd80bbb3755c8b7ebee32712f40f2245119487021b4b84e1565e3ca31967ac8604d4032170dec280aeefa095d08b3b7241ef6646a6c86e5c62ce08be099"
 	headerByteAndVersion := "c000000001"
 
@@ -51,7 +58,7 @@ func (p *quicProber) buildPayload(name string) ([]byte, error) {
 	clientID := make([]byte, 8)
 	n, err := rand.Read(clientID)
 	if err != nil || n != 8 {
-		return nil, fmt.Errorf("failed rand read: %s", err)
+		return nil, "", fmt.Errorf("failed rand read: %s", err)
 	}
 	dstConnID := "08" + hex.EncodeToString(clientID)
 
@@ -59,7 +66,7 @@ func (p *quicProber) buildPayload(name string) ([]byte, error) {
 	buf := make([]byte, 5)
 	n, err = rand.Read(buf)
 	if err != nil || n != 5 {
-		return nil, fmt.Errorf("failed rand read: %s", err)
+		return nil, "", fmt.Errorf("failed rand read: %s", err)
 	}
 	srcConnID := "05" + hex.EncodeToString(buf)
 
@@ -73,30 +80,30 @@ func (p *quicProber) buildPayload(name string) ([]byte, error) {
 
 	paylaod, err := p.buildCryptoFramePaylaod(name)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	header := headerByteAndVersion + dstConnID + srcConnID + token + packetLen + packetNumStr
 	headerData, err := hex.DecodeString(header)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	km, err := generateKeyMaterial(clientID)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	cipherPayload, err := quicEncryptInitial(km, paylaod, headerData, packetNum)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	// Computer header protection info
 	sample := cipherPayload[3 : 3+16]
 	headerData, err = quicHeaderProtect(km, headerData, sample)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	// re-parse the updated header and create the full packet
@@ -105,7 +112,12 @@ func (p *quicProber) buildPayload(name string) ([]byte, error) {
 	// TODO enable padding
 	padLen := (1200*2 - len(fullData)) / 2
 
-	return hex.DecodeString(fullData + hex.EncodeToString(make([]byte, padLen)))
+	out, err := hex.DecodeString(fullData + hex.EncodeToString(make([]byte, padLen)))
+	if err != nil {
+		return nil, "", err
+	}
+
+	return out, hex.EncodeToString(clientID), err
 }
 
 func (p *quicProber) buildCryptoFramePaylaod(name string) ([]byte, error) {

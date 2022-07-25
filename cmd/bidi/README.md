@@ -1,9 +1,9 @@
 
 # Bidirectional Censorship Protocol Scanner
 
-Send packets to addresses that should not respond on UDP 53 _FAST_.
+Send packets to addresses that should not respond _FAST_.
 
-* If they respond to controls - probably actual resolvers by accident
+* If they respond to controls - probably actual hosts by accident
 * If they respond to others - bidirectional censorship
 
 This file is meant to pair with the address generators in `cmd/generate_*`.
