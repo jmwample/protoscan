@@ -91,10 +91,10 @@ func main() {
 	}
 
 	if *seed == -1 {
-		rand.Seed(int64(time.Now().Nanosecond()))
-	} else {
-		rand.Seed(*seed)
+		*seed = int64(time.Now().Nanosecond())
 	}
+	log.Println("Using seed:", *seed)
+	rand.Seed(*seed)
 
 	switch prober := p.(type) {
 	case *httpProber:
