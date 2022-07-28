@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"flag"
-	"fmt"
 	"log"
 	"math/rand"
 	"net"
@@ -137,7 +136,15 @@ func main() {
 			epochStart := time.Now()
 			for {
 				time.Sleep(5 * time.Second)
-				fmt.Println("stats %d %d %d %d %d %d", time.Since(start), time.Since(epochStart).Milliseconds(), stats.pt, stats.bt, stats.ppe, stats.bpe)
+				epochDur := time.Since(epochStart).Milliseconds()
+				log.Printf("stats %d %d %d %d %d %d",
+					time.Since(start).Milliseconds(),
+					epochDur,
+					stats.pt,
+					stats.bt,
+					stats.ppe*1000/epochDur,
+					stats.bpe*1000/epochDur)
+
 				stats.epochReset()
 				epochStart = time.Now()
 			}

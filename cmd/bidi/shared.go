@@ -20,13 +20,13 @@ var stats *sendStats = &sendStats{}
 
 type sendStats struct {
 	// packets per epoch
-	ppe int
+	ppe int64
 	// bytes per epoch
-	bpe int
+	bpe int64
 	// packets total
-	pt int
+	pt int64
 	// bytes total
-	bt int
+	bt int64
 
 	mu sync.Mutex
 }
@@ -41,8 +41,8 @@ func (s *sendStats) incPacketPerSec() {
 func (s *sendStats) incBytesPerSec(n int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.bpe += n
-	s.bt += n
+	s.bpe += int64(n)
+	s.bt += int64(n)
 }
 
 func (s *sendStats) epochReset() {
