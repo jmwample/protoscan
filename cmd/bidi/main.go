@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"flag"
+	"fmt"
 	"log"
 	"math/rand"
 	"net"
@@ -129,6 +130,19 @@ func main() {
 	}
 
 	go p.handlePcap(*iface)
+
+	go func() {
+		if *verbose {
+			start := time.Now()
+			epochStart := time.Now()
+			for {
+				time.Sleep(5 * time.Second)
+				fmt.Println("stats %d %d %d %d %d %d", time.Since(start), time.Since(epochStart).Milliseconds(), stats.pt, stats.bt, stats.ppe, stats.bpe)
+				stats.epochReset()
+				epochStart = time.Now()
+			}
+		}
+	}()
 
 	nJobs := 0
 	scanner := bufio.NewScanner(os.Stdin)

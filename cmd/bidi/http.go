@@ -21,6 +21,8 @@ const httpFmtStr = "GET / HTTP/1.1\r\nHost: %s\r\nUser-Agent: %s\r\nAccept: */*\
 type httpProber struct {
 	device string
 
+	t *tracker
+
 	// sendSynAndAck sends a syn and an ack packet as a pseudo prelude to a TCP
 	// session in order to trigger censorship responses from middlebloxes expecting
 	// and tracking some subset of the TCP flow state.

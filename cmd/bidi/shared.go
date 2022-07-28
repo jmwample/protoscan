@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"net"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/google/gopacket"
@@ -14,6 +15,42 @@ import (
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
 )
+
+var stats *sendStats = &sendStats{}
+
+type sendStats struct {
+	// packets per epoch
+	ppe int
+	// bytes per epoch
+	bpe int
+	// packets total
+	pt int
+	// bytes total
+	bt int
+
+	mu sync.Mutex
+}
+
+func (s *sendStats) incPacketPerSec() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.ppe++
+	s.pt++
+}
+
+func (s *sendStats) incBytesPerSec(n int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.bpe += n
+	s.bt += n
+}
+
+func (s *sendStats) epochReset() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.bpe = 0
+	s.ppe = 0
+}
 
 // getSrcIP allows us to check that there is a route to the dest with our
 // suggested source address and interface. This also allows the program to
@@ -63,8 +100,13 @@ func sendUDP(dst string, payload []byte, lAddr string, verbose bool) error {
 	}
 	defer conn.Close()
 
-	conn.Write(payload)
-	return nil
+	n, err := conn.Write(payload)
+	if err == nil {
+		stats.incPacketPerSec()
+		stats.incBytesPerSec(n)
+	}
+
+	return err
 }
 
 func sendTCP(dst string, payload []byte, lAddr, device string, synDelay time.Duration, sendSynAck, checksums, verbose bool) (string, error) {
@@ -190,18 +232,25 @@ func sendTCP(dst string, payload []byte, lAddr, device string, synDelay time.Dur
 			if err != nil {
 				return "", fmt.Errorf("failed to write syn: %s", err)
 			}
+			stats.incPacketPerSec()
+			stats.incBytesPerSec(ipHeader.TotalLen + len(synBuf))
+
 			time.Sleep(synDelay)
 
 			err = rawConn.WriteTo(ipHeader, ackBuf, nil)
 			if err != nil {
 				return "", fmt.Errorf("failed to write ack: %s", err)
 			}
+			stats.incPacketPerSec()
+			stats.incBytesPerSec(ipHeader.TotalLen + len(ackBuf))
 		}
 
 		err = rawConn.WriteTo(ipHeader, tcpPayloadBuf.Bytes(), nil)
 		if err != nil {
 			return "", fmt.Errorf("failed to write payload: %s", err)
 		}
+		stats.incPacketPerSec()
+		stats.incBytesPerSec(ipHeader.TotalLen + len(tcpPayloadBuf.Bytes()))
 	} else {
 		// golang/x/net/ipv6 does not provide a RawConn option because: " Unlike
 		// system calls and primitives for IPv4 facilities, tweaking IPv6
@@ -234,22 +283,29 @@ func sendTCP(dst string, payload []byte, lAddr, device string, synDelay time.Dur
 		}
 
 		if sendSynAck {
-			_, err = pktConn.WriteTo(synBuf, cm, addr)
+			n, err := pktConn.WriteTo(synBuf, cm, addr)
 			if err != nil {
 				return "", fmt.Errorf("failed to write syn: %s", err)
 			}
+			stats.incPacketPerSec()
+			stats.incBytesPerSec(n)
+
 			time.Sleep(synDelay)
 
-			_, err = pktConn.WriteTo(ackBuf, cm, addr)
+			n, err = pktConn.WriteTo(ackBuf, cm, addr)
 			if err != nil {
 				return "", fmt.Errorf("failed to write ack: %s", err)
 			}
+			stats.incPacketPerSec()
+			stats.incBytesPerSec(n)
 		}
 
-		_, err = pktConn.WriteTo(tcpPayloadBuf.Bytes(), cm, addr)
+		n, err := pktConn.WriteTo(tcpPayloadBuf.Bytes(), cm, addr)
 		if err != nil {
 			return "", fmt.Errorf("failed to write payload: %s", err)
 		}
+		stats.incPacketPerSec()
+		stats.incBytesPerSec(n)
 	}
 
 	return seqAck, nil

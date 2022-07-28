@@ -9,7 +9,7 @@ import (
 // tracker provides a structure for tracking keys - random bytes used in packet
 // fields - alongside the domains that they match. This way when we receive
 // injected responses that contain traces of the random values we can determine
-// which domain is the one receiving the injection.
+// which domain is the one receiving the injection. Threadsafe.
 //
 // This structure must be thread safe for both insertion and access because
 // there will be many goroutines accessing and inserting values in parallel.
@@ -58,12 +58,11 @@ func (t *tracker) insert(b []byte, s string) {
 }
 
 // insertGenerate generates a key that is not yet in the tracker for the
-// inserting string value if the randomness generator throws an error or fails
-// the read it will return an empty array of bytes. otherwise it returns the
-// bytes new key.
+// inserting string value if the rand.Read throws an error or fails the read it
+// will return an empty array of bytes. otherwise it returns the bytes new key.
 //
 // The keyLen field of the tracker struct must be set for this fn to work.
-func (t *tracker) insertGenerate(s string, r *rand.Rand) []byte {
+func (t *tracker) insertGenerate(s string) []byte {
 	t.m.Lock()
 	defer t.m.Unlock()
 
@@ -77,7 +76,7 @@ func (t *tracker) insertGenerate(s string, r *rand.Rand) []byte {
 	ok := true
 	buf := make([]byte, t.keyLen)
 	for {
-		n, err := r.Read(buf)
+		n, err := rand.Read(buf)
 		if err != nil || n != int(t.keyLen) {
 			return []byte{}
 		}
