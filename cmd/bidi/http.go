@@ -24,7 +24,7 @@ type httpProber struct {
 	t *tracker
 
 	// sendSynAndAck sends a syn and an ack packet as a pseudo prelude to a TCP
-	// session in order to trigger censorship responses from middlebloxes expecting
+	// session in order to trigger censorship responses from middle-boxes expecting
 	// and tracking some subset of the TCP flow state.
 	sendSynAndAck bool
 	synDelay      time.Duration

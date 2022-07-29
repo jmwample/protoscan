@@ -3,10 +3,13 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
+	"log"
 	"math/rand"
 	"net"
+	"os"
 	"strconv"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/google/gopacket"
@@ -152,7 +155,7 @@ func sendTCP(dst string, payload []byte, lAddr, device string, synDelay time.Dur
 	}
 	seqAck := fmt.Sprintf("%x %x", seq+1, ack)
 
-	// Fill out IP header with source and dest
+	// Fill out gopacket IP header with source and dest JUST for Data layer checksums
 	var ipLayer gopacket.SerializableLayer
 	var networkLayer gopacket.NetworkLayer
 	if useV4 {
@@ -207,50 +210,63 @@ func sendTCP(dst string, payload []byte, lAddr, device string, synDelay time.Dur
 	if err != nil {
 		return "", err
 	}
-
 	// XXX end of packet creation
 
 	// XXX send packet
 	if useV4 {
-		packetConn, err := net.ListenPacket("ip4:tcp", "")
+		var err error
+		h := ipv4.Header{
+			Version:  4,
+			Len:      20,
+			TotalLen: 20 + len(tcpPayloadBuf.Bytes()),
+			TTL:      64,
+			Protocol: int(layers.IPProtocolTCP), // TCP
+			Dst:      ip,
+			Src:      localIP,
+			// ID and Checksum will be set for us by the kernel
+		}
+		out, err := h.Marshal()
 		if err != nil {
-			return "", fmt.Errorf("failed to listen on ipv4: %s", err)
+			log.Fatal(err)
 		}
-		defer packetConn.Close()
 
-		ipHeader, err := ipv4.ParseHeader(ipHeaderBuf.Bytes())
+		fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
 		if err != nil {
-			return "", fmt.Errorf("failed to parse ipv4 header: %s", err)
+			return "", os.NewSyscallError("socket", err)
 		}
-		rawConn, err := ipv4.NewRawConn(packetConn)
+		defer syscall.Close(fd)
+
+		// if sendSynAck {
+		// 	// err = rawConn.WriteTo(ipHeader, synBuf, nil)
+		// 	// if err != nil {
+		// 	// 	return "", fmt.Errorf("failed to write syn: %s", err)
+		// 	// }
+		// 	// stats.incPacketPerSec()
+		// 	// stats.incBytesPerSec(ipHeader.TotalLen + len(synBuf))
+
+		// 	// time.Sleep(synDelay)
+
+		// 	// err = rawConn.WriteTo(ipHeader, ackBuf, nil)
+		// 	// if err != nil {
+		// 	// 	return "", fmt.Errorf("failed to write ack: %s", err)
+		// 	// }
+		// 	// stats.incPacketPerSec()
+		// 	// stats.incBytesPerSec(ipHeader.TotalLen + len(ackBuf))
+		// }
+
+		addr := syscall.SockaddrInet4{
+			Port: 0,
+			Addr: *(*[4]byte)(ip.To4()),
+		}
+
+		p := append(out, tcpPayloadBuf.Bytes()...)
+		err = syscall.Sendto(fd, p, 0, &addr)
 		if err != nil {
-			return "", fmt.Errorf("failed to create ipv4 rawconn: %s", err)
+			return "", os.NewSyscallError("sendto", err)
 		}
 
-		if sendSynAck {
-			err = rawConn.WriteTo(ipHeader, synBuf, nil)
-			if err != nil {
-				return "", fmt.Errorf("failed to write syn: %s", err)
-			}
-			stats.incPacketPerSec()
-			stats.incBytesPerSec(ipHeader.TotalLen + len(synBuf))
-
-			time.Sleep(synDelay)
-
-			err = rawConn.WriteTo(ipHeader, ackBuf, nil)
-			if err != nil {
-				return "", fmt.Errorf("failed to write ack: %s", err)
-			}
-			stats.incPacketPerSec()
-			stats.incBytesPerSec(ipHeader.TotalLen + len(ackBuf))
-		}
-
-		err = rawConn.WriteTo(ipHeader, tcpPayloadBuf.Bytes(), nil)
-		if err != nil {
-			return "", fmt.Errorf("failed to write payload: %s", err)
-		}
 		stats.incPacketPerSec()
-		stats.incBytesPerSec(ipHeader.TotalLen + len(tcpPayloadBuf.Bytes()))
+		stats.incBytesPerSec(len(p))
 	} else {
 		// golang/x/net/ipv6 does not provide a RawConn option because: " Unlike
 		// system calls and primitives for IPv4 facilities, tweaking IPv6
@@ -306,6 +322,7 @@ func sendTCP(dst string, payload []byte, lAddr, device string, synDelay time.Dur
 		}
 		stats.incPacketPerSec()
 		stats.incBytesPerSec(n)
+		// time.Sleep(60 * time.Second)
 	}
 
 	return seqAck, nil
