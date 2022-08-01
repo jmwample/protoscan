@@ -31,8 +31,12 @@ The calls to TLS / HTTP buildPayload are not what is causing the low pps output.
 */
 
 func Benchmark_SendProbes(b *testing.B) {
+	t, err := newTCPSender("wlo1", "", "")
+	if err != nil {
+		panic(err)
+	}
 	pt := &tlsProber{
-		device:    "wlp4s0",
+		t:         t,
 		checksums: true,
 	}
 	pd := &dnsProber{}

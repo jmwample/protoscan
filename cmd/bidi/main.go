@@ -98,12 +98,20 @@ func main() {
 
 	switch prober := p.(type) {
 	case *httpProber:
-		prober.device = *iface
+		t, err := newTCPSender(*iface, *lAddr, "")
+		if err != nil {
+			log.Fatal(err)
+		}
+		prober.t = t
 		prober.sendSynAndAck = !*noSynAck
 		prober.synDelay = *synDelay
 		prober.checksums = !*noChecksums
 	case *tlsProber:
-		prober.device = *iface
+		t, err := newTCPSender(*iface, *lAddr, "")
+		if err != nil {
+			log.Fatal(err)
+		}
+		prober.t = t
 		prober.sendSynAndAck = !*noSynAck
 		prober.synDelay = *synDelay
 		prober.checksums = !*noChecksums
