@@ -12,8 +12,6 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	"golang.org/x/net/ipv4"
-	"golang.org/x/net/ipv6"
 )
 
 type tcpSender struct {
@@ -76,6 +74,12 @@ func (t *tcpSender) sendTCP(dst string, payload []byte, synDelay time.Duration, 
 	ip := net.ParseIP(host)
 
 	var useV4 = ip.To4() != nil
+	if useV4 && t.src4 == nil {
+		return "", fmt.Errorf("no IPv4 address available")
+	} else if !useV4 && t.src6 == nil {
+		return "", fmt.Errorf("no IPv6 address available")
+	}
+
 	options := gopacket.SerializeOptions{
 		FixLengths:       true,
 		ComputeChecksums: checksums,
@@ -99,8 +103,7 @@ func (t *tcpSender) sendTCP(dst string, payload []byte, synDelay time.Duration, 
 	seqAck := fmt.Sprintf("%x %x", seq+1, ack)
 
 	// Fill out gopacket IP header with source and dest JUST for Data layer checksums
-	var ipLayer gopacket.SerializableLayer
-	var networkLayer gopacket.NetworkLayer
+	var networkLayer netLayer
 	if useV4 {
 		ipLayer4 := &layers.IPv4{
 			SrcIP:    t.src4,
@@ -110,7 +113,6 @@ func (t *tcpSender) sendTCP(dst string, payload []byte, synDelay time.Duration, 
 			Protocol: layers.IPProtocolTCP,
 		}
 		networkLayer = ipLayer4
-		ipLayer = ipLayer4
 	} else {
 		ipLayer6 := &layers.IPv6{
 			SrcIP:      t.src6,
@@ -120,17 +122,9 @@ func (t *tcpSender) sendTCP(dst string, payload []byte, synDelay time.Duration, 
 			NextHeader: layers.IPProtocolTCP,
 		}
 		networkLayer = ipLayer6
-		ipLayer = ipLayer6
 	}
 
 	tcpLayer.SetNetworkLayerForChecksum(networkLayer)
-
-	// serialize IP header buf
-	ipHeaderBuf := gopacket.NewSerializeBuffer()
-	err = ipLayer.SerializeTo(ipHeaderBuf, options)
-	if err != nil {
-		return "", err
-	}
 
 	// build syn, ack, and data payloads
 	synBuf, err := getSyn(uint32(randPort), uint32(port), seq, options, networkLayer)
@@ -143,123 +137,65 @@ func (t *tcpSender) sendTCP(dst string, payload []byte, synDelay time.Duration, 
 	}
 
 	tcpPayloadBuf := gopacket.NewSerializeBuffer()
-	err = gopacket.SerializeLayers(tcpPayloadBuf, options, &tcpLayer, gopacket.Payload(payload))
+	err = gopacket.SerializeLayers(tcpPayloadBuf, options, networkLayer, &tcpLayer, gopacket.Payload(payload))
 	if err != nil {
 		return "", err
 	}
 	// XXX end of packet creation
 
 	// XXX send packet
+	var addr syscall.Sockaddr
 	if useV4 {
-		var err error
-		h := ipv4.Header{
-			Version:  4,
-			Len:      20,
-			TotalLen: 20 + len(tcpPayloadBuf.Bytes()),
-			TTL:      64,
-			Protocol: int(layers.IPProtocolTCP), // TCP
-			Dst:      ip,
-			Src:      t.src4,
-			// ID and Checksum will be set for us by the kernel
-		}
-		out, err := h.Marshal()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// if sendSynAck {
-		// 	// err = rawConn.WriteTo(ipHeader, synBuf, nil)
-		// 	// if err != nil {
-		// 	// 	return "", fmt.Errorf("failed to write syn: %s", err)
-		// 	// }
-		// 	// stats.incPacketPerSec()
-		// 	// stats.incBytesPerSec(ipHeader.TotalLen + len(synBuf))
-
-		// 	// time.Sleep(synDelay)
-
-		// 	// err = rawConn.WriteTo(ipHeader, ackBuf, nil)
-		// 	// if err != nil {
-		// 	// 	return "", fmt.Errorf("failed to write ack: %s", err)
-		// 	// }
-		// 	// stats.incPacketPerSec()
-		// 	// stats.incBytesPerSec(ipHeader.TotalLen + len(ackBuf))
-		// }
-
-		addr := syscall.SockaddrInet4{
+		addr = &syscall.SockaddrInet4{
 			Port: 0,
 			Addr: *(*[4]byte)(ip.To4()),
 		}
-
-		p := append(out, tcpPayloadBuf.Bytes()...)
-		err = syscall.Sendto(t.sockFd, p, 0, &addr)
-		if err != nil {
-			return "", os.NewSyscallError("sendto", err)
-		}
-
-		stats.incPacketPerSec()
-		stats.incBytesPerSec(len(p))
 	} else {
-		// golang/x/net/ipv6 does not provide a RawConn option because: " Unlike
-		// system calls and primitives for IPv4 facilities, tweaking IPv6
-		// headers on outgoing packets from userspace must use per-packet basis
-		// ancillary data and a very few sticky socket options, and that's the
-		// reason why ipv6.RawConn doesn't exist; see RFC 3542"
-		// - https://github.com/golang/go/issues/18633
-		//
-		// So we set sock opts on the conn and provide addresses.
-		cm := new(ipv6.ControlMessage)
-		cm.Src = t.src6
-		cm.Dst = ip
+		addr = &syscall.SockaddrInet6{
+			Port: 0,
+			Addr: *(*[16]byte)(ip.To16()),
+		}
+	}
 
-		addr, _ := net.ResolveIPAddr("ip6", host)
-
-		packetConn, err := net.ListenPacket("ip6:tcp", "")
+	if sendSynAck {
+		err = sendPkt(t.sockFd, synBuf, addr)
 		if err != nil {
-			return "", fmt.Errorf("failed to listen on ipv6: %s", err)
-		}
-		defer packetConn.Close()
-
-		pktConn := ipv6.NewPacketConn(packetConn)
-		if pktConn == nil {
-			return "", fmt.Errorf("unable to create IPv6 packet conn")
+			return "", err
 		}
 
-		err = pktConn.SetControlMessage(ipv6.FlagDst|ipv6.FlagSrc, true)
+		time.Sleep(synDelay)
+
+		err = sendPkt(t.sockFd, ackBuf, addr)
 		if err != nil {
-			return "", fmt.Errorf("failed to set control flags: %s", err)
+			return "", err
 		}
+	}
 
-		if sendSynAck {
-			n, err := pktConn.WriteTo(synBuf, cm, addr)
-			if err != nil {
-				return "", fmt.Errorf("failed to write syn: %s", err)
-			}
-			stats.incPacketPerSec()
-			stats.incBytesPerSec(n)
-
-			time.Sleep(synDelay)
-
-			n, err = pktConn.WriteTo(ackBuf, cm, addr)
-			if err != nil {
-				return "", fmt.Errorf("failed to write ack: %s", err)
-			}
-			stats.incPacketPerSec()
-			stats.incBytesPerSec(n)
-		}
-
-		n, err := pktConn.WriteTo(tcpPayloadBuf.Bytes(), cm, addr)
-		if err != nil {
-			return "", fmt.Errorf("failed to write payload: %s", err)
-		}
-		stats.incPacketPerSec()
-		stats.incBytesPerSec(n)
-		// time.Sleep(60 * time.Second)
+	err = sendPkt(t.sockFd, tcpPayloadBuf.Bytes(), addr)
+	if err != nil {
+		return "", err
 	}
 
 	return seqAck, nil
 }
 
-func getSyn(srcPort, dstPort, seq uint32, options gopacket.SerializeOptions, ipLayer gopacket.NetworkLayer) ([]byte, error) {
+type netLayer interface {
+	gopacket.SerializableLayer
+	gopacket.NetworkLayer
+}
+
+func sendPkt(sockFd int, payload []byte, addr syscall.Sockaddr) error {
+	err := syscall.Sendto(sockFd, payload, 0, addr)
+	if err != nil {
+		return os.NewSyscallError("sendto", err)
+	}
+	stats.incPacketPerSec()
+	stats.incBytesPerSec(len(payload))
+
+	return nil
+}
+
+func getSyn(srcPort, dstPort, seq uint32, options gopacket.SerializeOptions, ipLayer netLayer) ([]byte, error) {
 	synLayer := layers.TCP{
 		SrcPort: layers.TCPPort(srcPort),
 		DstPort: layers.TCPPort(dstPort),
@@ -291,13 +227,13 @@ func getSyn(srcPort, dstPort, seq uint32, options gopacket.SerializeOptions, ipL
 	synLayer.SetNetworkLayerForChecksum(ipLayer)
 
 	tcpPayloadBuf := gopacket.NewSerializeBuffer()
-	err := gopacket.SerializeLayers(tcpPayloadBuf, options, &synLayer)
+	err := gopacket.SerializeLayers(tcpPayloadBuf, options, ipLayer, &synLayer)
 	if err != nil {
 		return nil, err
 	}
 	return tcpPayloadBuf.Bytes(), nil
 }
-func getAck(srcPort, dstPort, seq, ack uint32, options gopacket.SerializeOptions, ipLayer gopacket.NetworkLayer) ([]byte, error) {
+func getAck(srcPort, dstPort, seq, ack uint32, options gopacket.SerializeOptions, ipLayer netLayer) ([]byte, error) {
 
 	ackLayer := &layers.TCP{
 		SrcPort: layers.TCPPort(srcPort),
@@ -319,7 +255,7 @@ func getAck(srcPort, dstPort, seq, ack uint32, options gopacket.SerializeOptions
 	ackLayer.SetNetworkLayerForChecksum(ipLayer)
 
 	tcpPayloadBuf := gopacket.NewSerializeBuffer()
-	err := gopacket.SerializeLayers(tcpPayloadBuf, options, ackLayer)
+	err := gopacket.SerializeLayers(tcpPayloadBuf, options, ipLayer, ackLayer)
 	if err != nil {
 		return nil, err
 	}
