@@ -18,6 +18,14 @@ type tcpSender struct {
 	src4 net.IP
 	src6 net.IP
 
+	// sendSynAndAck sends a syn and an ack packet as a pseudo prelude to a TCP
+	// session in order to trigger censorship responses from middle-boxes expecting
+	// and tracking some subset of the TCP flow state.
+	sendSynAndAck bool
+	synDelay      time.Duration
+
+	checksums bool
+
 	device  string
 	sockFd4 int
 	sockFd6 int
@@ -27,7 +35,7 @@ type tcpSender struct {
 // for public v4 and v6 IPs (or uses locals if provided).
 //
 // Make sure to defer cleanup to // avoid leaving hanging sockets.
-func newTCPSender(device, lAddr4, lAddr6 string) (*tcpSender, error) {
+func newTCPSender(device, lAddr4, lAddr6 string, synAck bool, synDelay time.Duration, checksums bool) (*tcpSender, error) {
 	localIface, err := net.InterfaceByName(device)
 	if err != nil {
 		return nil, fmt.Errorf("bad device name: \"%s\"", device)
@@ -58,6 +66,11 @@ func newTCPSender(device, lAddr4, lAddr6 string) (*tcpSender, error) {
 		src6:   localIP6,
 		device: device,
 
+		sendSynAndAck: synAck,
+		synDelay:      synDelay,
+
+		checksums: checksums,
+
 		sockFd4: fd4,
 		sockFd6: fd6,
 	}
@@ -70,7 +83,7 @@ func (t *tcpSender) cleanTCPSender() {
 	syscall.Close(t.sockFd6)
 }
 
-func (t *tcpSender) sendTCP(dst string, payload []byte, synDelay time.Duration, sendSynAck, checksums, verbose bool) (string, error) {
+func (t *tcpSender) sendTCP(dst string, payload []byte, verbose bool) (string, error) {
 
 	host, portStr, err := net.SplitHostPort(dst)
 	if err != nil {
@@ -89,7 +102,7 @@ func (t *tcpSender) sendTCP(dst string, payload []byte, synDelay time.Duration, 
 
 	options := gopacket.SerializeOptions{
 		FixLengths:       true,
-		ComputeChecksums: checksums,
+		ComputeChecksums: t.checksums,
 	}
 
 	// Pick a random source port between 1000 and 65535
@@ -167,13 +180,13 @@ func (t *tcpSender) sendTCP(dst string, payload []byte, synDelay time.Duration, 
 		}
 	}
 
-	if sendSynAck {
+	if t.sendSynAndAck {
 		err = sendPkt(sockFd, synBuf, addr)
 		if err != nil {
 			return "", err
 		}
 
-		time.Sleep(synDelay)
+		time.Sleep(t.synDelay)
 
 		err = sendPkt(sockFd, ackBuf, addr)
 		if err != nil {
