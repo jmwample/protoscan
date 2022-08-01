@@ -36,18 +36,23 @@ func Benchmark_SendProbes(b *testing.B) {
 		panic(err)
 	}
 	pt := &tlsProber{
-		t:         t,
+		sender:    t,
 		checksums: true,
 	}
 	pd := &dnsProber{}
 	for n := 0; n < b.N; n++ {
-		err := pt.sendProbe(net.ParseIP("192.12.240.40"), "test.com", "", true)
+		err := pt.sendProbe(net.ParseIP("192.12.240.40"), "test.com", true)
 		if err != nil {
 			b.Log("tls", err)
 		}
-		err = pd.sendProbe(net.ParseIP("192.12.240.40"), "test.com", "", true)
+		err = pd.sendProbe(net.ParseIP("192.12.240.40"), "test.com", true)
 		if err != nil {
 			b.Log("dns", err)
 		}
 	}
 }
+
+/*
+Takeaways:
+- Using getSrc for every probe sent is a TERRIBLE idea. Move that to its own thing.
+*/

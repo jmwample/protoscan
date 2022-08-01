@@ -14,12 +14,12 @@ import (
 type prober interface {
 	registerFlags()
 
-	sendProbe(ip net.IP, name string, lAddr string, verbose bool) error
+	sendProbe(ip net.IP, name string, verbose bool) error
 
 	handlePcap(iface string)
 }
 
-func worker(p prober, wait time.Duration, verbose bool, lAddr string, ips <-chan string, domains []string, wg *sync.WaitGroup) {
+func worker(p prober, wait time.Duration, verbose bool, ips <-chan string, domains []string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for ip := range ips {
@@ -29,7 +29,7 @@ func worker(p prober, wait time.Duration, verbose bool, lAddr string, ips <-chan
 		}
 
 		for _, domain := range domains {
-			err := p.sendProbe(addr, domain, lAddr, verbose)
+			err := p.sendProbe(addr, domain, verbose)
 			if err != nil {
 				log.Printf("Result %s,%s - error: %v\n", ip, domain, err)
 				continue
@@ -71,7 +71,8 @@ func main() {
 	verbose := flag.Bool("verbose", true, "Verbose prints sent/received DNS packets/info")
 	domainf := flag.String("domains", "domains.txt", "File with a list of domains to test")
 	iface := flag.String("iface", "eth0", "Interface to listen on")
-	lAddr := flag.String("laddr", "", "Local address to send packets from - unset uses default interface")
+	lAddr4 := flag.String("laddr4", "", "Local address to send packets from - unset uses default interface")
+	lAddr6 := flag.String("laddr6", "", "Local address to send packets from - unset uses default interface")
 	proberType := flag.String("type", "dns", "probe type to send")
 	seed := flag.Int64("seed", -1, "[HTTP/TLS/QUIC] seed for random elements of generated packets. default seeded with time.Now.Nano")
 	noSynAck := flag.Bool("nsa", false, "[HTTP/TLS] No Syn Ack (nsa) disable syn, and ack warm up packets for tcp probes")
@@ -98,25 +99,35 @@ func main() {
 
 	switch prober := p.(type) {
 	case *httpProber:
-		t, err := newTCPSender(*iface, *lAddr, "")
+		t, err := newTCPSender(*iface, *lAddr4, *lAddr6)
 		if err != nil {
 			log.Fatal(err)
 		}
-		prober.t = t
+		prober.sender = t
 		prober.sendSynAndAck = !*noSynAck
 		prober.synDelay = *synDelay
 		prober.checksums = !*noChecksums
 	case *tlsProber:
-		t, err := newTCPSender(*iface, *lAddr, "")
+		t, err := newTCPSender(*iface, *lAddr4, *lAddr6)
 		if err != nil {
 			log.Fatal(err)
 		}
-		prober.t = t
+		prober.sender = t
 		prober.sendSynAndAck = !*noSynAck
 		prober.synDelay = *synDelay
 		prober.checksums = !*noChecksums
 	case *quicProber:
-		prober.device = *iface
+		u, err := newUDPSender(*lAddr4, *lAddr6)
+		if err != nil {
+			log.Fatal(err)
+		}
+		prober.sender = u
+	case *dnsProber:
+		u, err := newUDPSender(*lAddr4, *lAddr6)
+		if err != nil {
+			log.Fatal(err)
+		}
+		prober.sender = u
 	}
 
 	// Parse domains
@@ -133,7 +144,7 @@ func main() {
 	for w := uint(0); w < *nWorkers; w++ {
 		wg.Add(1)
 		// go dnsWorker(*wait, *verbose, false, *lAddr, ips, domains, &wg)
-		go worker(p, *wait, *verbose, *lAddr, ips, domains, &wg)
+		go worker(p, *wait, *verbose, ips, domains, &wg)
 	}
 
 	go p.handlePcap(*iface)

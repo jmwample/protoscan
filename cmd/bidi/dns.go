@@ -17,14 +17,15 @@ import (
 const dnsProbeTypeName = "dns"
 
 type dnsProber struct {
-	qType uint
+	sender *udpSender
+	qType  uint
 }
 
 func (p *dnsProber) registerFlags() {
 	flag.UintVar(&p.qType, "qtype", 1, "[DNS] Type of Query to send (1 = A / 28 = AAAA)")
 }
 
-func (p *dnsProber) sendProbe(ip net.IP, name string, lAddr string, verbose bool) error {
+func (p *dnsProber) sendProbe(ip net.IP, name string, verbose bool) error {
 
 	out, err := p.buildPayload(name)
 	if err != nil {
@@ -33,7 +34,7 @@ func (p *dnsProber) sendProbe(ip net.IP, name string, lAddr string, verbose bool
 
 	addr := net.JoinHostPort(ip.String(), "53")
 
-	err = sendUDP(addr, out, lAddr, verbose)
+	err = p.sender.sendUDP(addr, out, verbose)
 	if err == nil && verbose {
 		log.Printf("Sent %s %s %s\n", ip.String(), name, hex.EncodeToString(out))
 	}

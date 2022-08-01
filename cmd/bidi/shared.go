@@ -81,26 +81,6 @@ func getSrcIP(localIface *net.Interface, lAddr string, dstIP net.IP) (net.IP, er
 	return localIP, nil
 }
 
-func sendUDP(dst string, payload []byte, lAddr string, verbose bool) error {
-	var d net.Dialer
-	if lAddr != "" {
-		d.LocalAddr, _ = net.ResolveUDPAddr("ip", lAddr)
-	}
-
-	conn, err := d.Dial("udp", dst)
-	if err != nil {
-		return fmt.Errorf("%s - error creating UDP socket(?): %v", dst, err)
-	}
-	defer conn.Close()
-
-	n, err := conn.Write(payload)
-	if err == nil {
-		stats.incPacketPerSec()
-		stats.incBytesPerSec(n)
-	}
-
-	return err
-}
 
 func decodeOrPanic(s string) []byte {
 	b, err := hex.DecodeString(s)

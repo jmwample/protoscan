@@ -10,7 +10,6 @@ import (
 	"math/rand"
 	"net"
 	"os"
-	"sync"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -23,8 +22,7 @@ import (
 const quicProbeTypeName = "quic"
 
 type quicProber struct {
-	device   string
-	initOnce sync.Once
+	sender *udpSender
 
 	tracker *tracker
 }
@@ -32,7 +30,7 @@ type quicProber struct {
 func (p *quicProber) registerFlags() {
 }
 
-func (p *quicProber) sendProbe(ip net.IP, name string, lAddr string, verbose bool) error {
+func (p *quicProber) sendProbe(ip net.IP, name string, verbose bool) error {
 
 	out, clientID, err := p.buildPayload(name)
 	if err != nil {
@@ -41,7 +39,7 @@ func (p *quicProber) sendProbe(ip net.IP, name string, lAddr string, verbose boo
 
 	addr := net.JoinHostPort(ip.String(), "443")
 
-	err = sendUDP(addr, out, lAddr, verbose)
+	err = p.sender.sendUDP(addr, out, verbose)
 
 	if verbose {
 		log.Printf("Sent %s %s %s\n", ip.String(), name, clientID)

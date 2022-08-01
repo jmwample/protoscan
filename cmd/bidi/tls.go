@@ -18,7 +18,7 @@ import (
 const tlsProbeTypeName = "tls"
 
 type tlsProber struct {
-	t *tcpSender
+	sender *tcpSender
 
 	// sendSynAndAck sends a syn and an ack packet as a pseudo prelude to a TCP
 	// session in order to trigger censorship responses from middlebloxes expecting
@@ -32,7 +32,7 @@ type tlsProber struct {
 func (p *tlsProber) registerFlags() {
 }
 
-func (p *tlsProber) sendProbe(ip net.IP, name string, lAddr string, verbose bool) error {
+func (p *tlsProber) sendProbe(ip net.IP, name string, verbose bool) error {
 
 	out, err := p.buildPayload(name)
 	if err != nil {
@@ -40,7 +40,7 @@ func (p *tlsProber) sendProbe(ip net.IP, name string, lAddr string, verbose bool
 	}
 
 	addr := net.JoinHostPort(ip.String(), "443")
-	seqAck, err := p.t.sendTCP(addr, out, p.synDelay, p.sendSynAndAck, p.checksums, verbose)
+	seqAck, err := p.sender.sendTCP(addr, out, p.synDelay, p.sendSynAndAck, p.checksums, verbose)
 	if err == nil && verbose {
 		log.Printf("Sent %s %s %s\n", ip.String(), name, seqAck)
 	}

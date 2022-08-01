@@ -19,7 +19,7 @@ const httpProbeTypeName = "http"
 const httpFmtStr = "GET / HTTP/1.1\r\nHost: %s\r\nUser-Agent: %s\r\nAccept: */*\r\n\r\n"
 
 type httpProber struct {
-	t *tcpSender
+	sender *tcpSender
 
 	// sendSynAndAck sends a syn and an ack packet as a pseudo prelude to a TCP
 	// session in order to trigger censorship responses from middle-boxes expecting
@@ -39,14 +39,14 @@ func (p *httpProber) buildPayload(name string) ([]byte, error) {
 
 }
 
-func (p *httpProber) sendProbe(ip net.IP, name string, lAddr string, verbose bool) error {
+func (p *httpProber) sendProbe(ip net.IP, name string, verbose bool) error {
 	out, err := p.buildPayload(name)
 	if err != nil {
 		return fmt.Errorf("failed to build tls payload: %s", err)
 	}
 
 	addr := net.JoinHostPort(ip.String(), "80")
-	seqAck, err := p.t.sendTCP(addr, out, p.synDelay, p.sendSynAndAck, p.checksums, verbose)
+	seqAck, err := p.sender.sendTCP(addr, out, p.synDelay, p.sendSynAndAck, p.checksums, verbose)
 	if err == nil && verbose {
 		log.Printf("Sent %s %s %s\n", ip.String(), name, seqAck)
 	}
