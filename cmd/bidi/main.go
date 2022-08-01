@@ -19,25 +19,24 @@ type prober interface {
 	handlePcap(iface string)
 }
 
-func worker(p prober, wait time.Duration, verbose bool, ips <-chan string, domains []string, wg *sync.WaitGroup) {
+type job struct {
+	domain, ip string
+}
+
+func worker(p prober, wait time.Duration, verbose bool, ips <-chan *job, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	for ip := range ips {
-		addr := net.ParseIP(ip)
-		if verbose {
-			log.Printf("Sending to %v...\n", addr)
+	for job := range ips {
+		addr := net.ParseIP(job.ip)
+
+		err := p.sendProbe(addr, job.domain, verbose)
+		if err != nil {
+			log.Printf("Result %s,%s - error: %v\n", job.ip, job.domain, err)
+			continue
 		}
 
-		for _, domain := range domains {
-			err := p.sendProbe(addr, domain, verbose)
-			if err != nil {
-				log.Printf("Result %s,%s - error: %v\n", ip, domain, err)
-				continue
-			}
-
-			// Wait here
-			time.Sleep(wait)
-		}
+		// Wait here
+		time.Sleep(wait)
 	}
 }
 
@@ -57,6 +56,35 @@ func getDomains(fname string) ([]string, error) {
 	return lines, scanner.Err()
 }
 
+func getIPs(fPath string) ([]string, error) {
+	var ips []string
+	var scanner *bufio.Scanner
+
+	if fPath == "" {
+		// if no filename is provided read ips from stdin
+		scanner = bufio.NewScanner(os.Stdin)
+	} else {
+		file, err := os.Open(fPath)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer file.Close()
+
+		scanner = bufio.NewScanner(file)
+	}
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		ips = append(ips, line)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return ips, nil
+}
+
 func main() {
 
 	var probers = map[string]prober{
@@ -70,6 +98,7 @@ func main() {
 	wait := flag.Duration("wait", 5*time.Second, "Duration a worker waits after sending a probe")
 	verbose := flag.Bool("verbose", true, "Verbose prints sent/received DNS packets/info")
 	domainf := flag.String("domains", "domains.txt", "File with a list of domains to test")
+	ipFName := flag.String("ips", "", "File with a list of target ip to test. Empty string reads from stdin")
 	iface := flag.String("iface", "eth0", "Interface to listen on")
 	lAddr4 := flag.String("laddr", "", "Local address to send packets from - unset uses default interface")
 	lAddr6 := flag.String("laddr6", "", "Local address to send packets from - unset uses default interface")
@@ -132,13 +161,13 @@ func main() {
 	}
 	log.Printf("Read %d domains\n", len(domains))
 
-	ips := make(chan string, *nWorkers*10)
+	jobs := make(chan *job, *nWorkers*10)
 	var wg sync.WaitGroup
 
 	for w := uint(0); w < *nWorkers; w++ {
 		wg.Add(1)
 		// go dnsWorker(*wait, *verbose, false, *lAddr, ips, domains, &wg)
-		go worker(p, *wait, *verbose, ips, domains, &wg)
+		go worker(p, *wait, *verbose, jobs, &wg)
 	}
 
 	go p.handlePcap(*iface)
@@ -164,17 +193,17 @@ func main() {
 		}
 	}()
 
-	nJobs := 0
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		line := scanner.Text()
-		ips <- line
-		nJobs++
+	ips, err := getIPs(*ipFName)
+	if err != nil {
+		log.Fatal(err)
 	}
-	close(ips)
 
-	if err := scanner.Err(); err != nil {
-		log.Println(err)
+	nJobs := 0
+	for _, domain := range domains {
+		for _, ip := range ips {
+			jobs <- &job{ip, domain}
+			nJobs++
+		}
 	}
 
 	wg.Wait()
