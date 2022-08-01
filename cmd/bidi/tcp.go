@@ -18,8 +18,9 @@ type tcpSender struct {
 	src4 net.IP
 	src6 net.IP
 
-	device string
-	sockFd int
+	device  string
+	sockFd4 int
+	sockFd6 int
 }
 
 // newTCPSender builds and inits new tcp sender. Gets source addresses
@@ -27,7 +28,6 @@ type tcpSender struct {
 //
 // Make sure to defer cleanup to // avoid leaving hanging sockets.
 func newTCPSender(device, lAddr4, lAddr6 string) (*tcpSender, error) {
-
 	localIface, err := net.InterfaceByName(device)
 	if err != nil {
 		return nil, fmt.Errorf("bad device name: \"%s\"", device)
@@ -43,7 +43,12 @@ func newTCPSender(device, lAddr4, lAddr6 string) (*tcpSender, error) {
 		log.Println("failed to init IPv6 - likely not supported")
 	}
 
-	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
+	fd4, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
+	if err != nil {
+		return nil, os.NewSyscallError("socket", err)
+	}
+
+	fd6, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
 	if err != nil {
 		return nil, os.NewSyscallError("socket", err)
 	}
@@ -53,14 +58,16 @@ func newTCPSender(device, lAddr4, lAddr6 string) (*tcpSender, error) {
 		src6:   localIP6,
 		device: device,
 
-		sockFd: fd,
+		sockFd4: fd4,
+		sockFd6: fd6,
 	}
 
 	return t, nil
 }
 
 func (t *tcpSender) cleanTCPSender() {
-	syscall.Close(t.sockFd)
+	syscall.Close(t.sockFd4)
+	syscall.Close(t.sockFd6)
 }
 
 func (t *tcpSender) sendTCP(dst string, payload []byte, synDelay time.Duration, sendSynAck, checksums, verbose bool) (string, error) {
@@ -145,12 +152,15 @@ func (t *tcpSender) sendTCP(dst string, payload []byte, synDelay time.Duration, 
 
 	// XXX send packet
 	var addr syscall.Sockaddr
+	var sockFd int
 	if useV4 {
+		sockFd = t.sockFd4
 		addr = &syscall.SockaddrInet4{
 			Port: 0,
 			Addr: *(*[4]byte)(ip.To4()),
 		}
 	} else {
+		sockFd = t.sockFd6
 		addr = &syscall.SockaddrInet6{
 			Port: 0,
 			Addr: *(*[16]byte)(ip.To16()),
@@ -158,20 +168,20 @@ func (t *tcpSender) sendTCP(dst string, payload []byte, synDelay time.Duration, 
 	}
 
 	if sendSynAck {
-		err = sendPkt(t.sockFd, synBuf, addr)
+		err = sendPkt(sockFd, synBuf, addr)
 		if err != nil {
 			return "", err
 		}
 
 		time.Sleep(synDelay)
 
-		err = sendPkt(t.sockFd, ackBuf, addr)
+		err = sendPkt(sockFd, ackBuf, addr)
 		if err != nil {
 			return "", err
 		}
 	}
 
-	err = sendPkt(t.sockFd, tcpPayloadBuf.Bytes(), addr)
+	err = sendPkt(sockFd, tcpPayloadBuf.Bytes(), addr)
 	if err != nil {
 		return "", err
 	}
