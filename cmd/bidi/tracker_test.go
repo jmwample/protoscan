@@ -12,10 +12,10 @@ import (
 func TestTracker(t *testing.T) {
 	var keyLen uint = 8
 	tr := newTracker(keyLen)
-	r := rand.New(rand.NewSource(1234))
+	rand.Seed(1234)
 
 	buf := make([]byte, keyLen)
-	_, err := r.Read(buf)
+	_, err := rand.Read(buf)
 	require.Nil(t, err)
 
 	// values get inserted.
@@ -35,7 +35,7 @@ func TestTracker(t *testing.T) {
 
 	// unknown key returns not ok
 	bufExpected := make([]byte, keyLen)
-	_, _ = r.Read(bufExpected)
+	_, _ = rand.Read(bufExpected)
 	k, ok = tr.get(bufExpected)
 	require.False(t, ok)
 	require.Equal(t, "", k)
@@ -46,8 +46,8 @@ func TestTracker(t *testing.T) {
 	require.Equal(t, "", k)
 
 	// test insertGenerate with guaranteed collision by re-seeding
-	r.Seed(1234)
-	newKey := tr.insertGenerate("def", r)
+	rand.Seed(1234)
+	newKey := tr.insertGenerate("def")
 	require.NotEqual(t, "", hex.EncodeToString(newKey))
 	require.NotEqual(t, hex.EncodeToString(buf), hex.EncodeToString(newKey))
 	require.Equal(t, hex.EncodeToString(bufExpected), hex.EncodeToString(newKey))
@@ -56,7 +56,7 @@ func TestTracker(t *testing.T) {
 
 	// test that calling insertGenerate on an existing value returns the
 	// existing key and does not update the maps
-	newKey = tr.insertGenerate("def", r)
+	newKey = tr.insertGenerate("def")
 	require.Equal(t, hex.EncodeToString(bufExpected), hex.EncodeToString(newKey))
 	require.Equal(t, 2, len(tr.d))
 	require.Equal(t, 2, len(tr.r))
@@ -72,16 +72,16 @@ func TestTrackerRace(t *testing.T) {
 	for i := 0; i < threads; i++ {
 		var k = i
 		go func() {
-			r := rand.New(rand.NewSource(1234))
+			rand.Seed(1234)
 			for j := 0; j < maxInsert; j++ {
 				val := fmt.Sprintf("%d", j*k)
-				b := tr.insertGenerate(val, r)
+				b := tr.insertGenerate(val)
 
 				tr.get(b)
 				tr.getKey(val)
 
 				buf := make([]byte, keyLen)
-				_, _ = r.Read(buf)
+				_, _ = rand.Read(buf)
 				tr.insert(buf, fmt.Sprintf("%d", j*k+1))
 				tr.get(buf)
 			}

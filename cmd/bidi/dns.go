@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 
 	"github.com/google/gopacket"
@@ -56,6 +57,9 @@ func (p *dnsProber) buildPayload(name string) ([]byte, error) {
 		Qtype:  uint16(p.qType),
 		Qclass: uint16(0x0001), // IN
 	}
+
+	// We don't need crypto random and we don't want to block
+	dns.Id = func() uint16 { return uint16(rand.Uint32()) }
 	m.Id = dns.Id()
 
 	out, err := m.Pack()
