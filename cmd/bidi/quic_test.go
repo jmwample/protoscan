@@ -2,8 +2,11 @@ package main
 
 import (
 	"encoding/hex"
+	"hash/crc64"
 	"math/rand"
+	"net"
 	"testing"
+	"unsafe"
 
 	"github.com/stretchr/testify/require"
 )
@@ -71,3 +74,18 @@ func TestQuicTLSPayload(t *testing.T) {
 // 	p := hex.EncodeToString(make([]byte, l))
 // 	t.Logf("%s, %d", p, len(p))
 // }
+
+func TestQuicTagValidate(t *testing.T) {
+	ip := net.ParseIP("127.0.0.1")
+	sport := 1234
+	// domain := "a.example.com"
+
+	ipByteSlice := (*[4]byte)(unsafe.Pointer(&sport))[:] // sport to []byte
+	ipByteSlice = append(ipByteSlice, ip.To16()...)      // append ip bytes
+
+	// The ECMA polynomial, defined in ECMA 182.
+	cid := crc64.Checksum(ipByteSlice, crc64.MakeTable(crc64.ECMA))
+
+	require.Equal(t, "d204000000000000000000000000ffff7f000001", hex.EncodeToString(ipByteSlice))
+	require.Equal(t, uint64(0xd45262e5f51c35c4), cid)
+}

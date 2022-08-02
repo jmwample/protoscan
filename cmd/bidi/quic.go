@@ -6,10 +6,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"hash/crc64"
 	"log"
 	"math/rand"
 	"net"
 	"os"
+	"unsafe"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -52,16 +54,23 @@ func (p *quicProber) buildPayload(name string, target net.IP, sport int) ([]byte
 	headerByteAndVersion := "c000000001"
 
 	// dynamic - client ID used for HKDF key schedule generation
-	clientID := make([]byte, 8)
-	n, err := rand.Read(clientID)
-	if err != nil || n != 8 {
-		return nil, "", fmt.Errorf("failed rand read: %s", err)
-	}
+	//
+	// set the client ID to be the CRC64-ECMA of the source port, the
+	// destination IP. This should allow a validation that the packet is related
+	// to a probe we sent.
+	ipByteSlice := (*[4]byte)(unsafe.Pointer(&sport))[:] // sport to []byte
+	ipByteSlice = append(ipByteSlice, target.To16()...)  // append ip bytes
+
+	// The ECMA polynomial, defined in ECMA 182.
+	cid := crc64.Checksum(ipByteSlice, crc64.MakeTable(crc64.ECMA))
+	clientID := (*[8]byte)(unsafe.Pointer(&cid))[:] // convert u64 to []byte
 	dstConnID := "08" + hex.EncodeToString(clientID)
+
+	log.Println("connid:", dstConnID)
 
 	// dynamic - source ID
 	buf := make([]byte, 5)
-	n, err = rand.Read(buf)
+	n, err := rand.Read(buf)
 	if err != nil || n != 5 {
 		return nil, "", fmt.Errorf("failed rand read: %s", err)
 	}

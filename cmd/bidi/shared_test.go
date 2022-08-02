@@ -132,7 +132,3 @@ func TestTCPTagValidateWithSeq(t *testing.T) {
 		2573409105
 	*/
 }
-
-func TestQuicTagValidate(t *testing.T) {
-	
-}

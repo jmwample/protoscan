@@ -116,9 +116,8 @@ func (t *tcpSender) sendTCP(dst string, sport int, domain string, payload []byte
 		ack = rand.Uint32()
 	} else {
 		// set the ack value to be the CRC of the source port, the destination
-		// IP and the sequence number. This should allow a validation that the
-		// packet is related to a probe we sent without causing repeat seq/ack
-		// values for repeated probes (as seq is chosen at random).
+		// IP. This should allow a validation that the packet is related to a
+		// probe we sent.
 		ipByteSlice := (*[4]byte)(unsafe.Pointer(&sport))[:] // sport to []byte
 		ipByteSlice = append(ipByteSlice, ip.To16()...)      // append ip bytes
 		// ipByteSlice = append(ipByteSlice, (*[4]byte)(unsafe.Pointer(&seq))[:]...) // append seq as []byte
