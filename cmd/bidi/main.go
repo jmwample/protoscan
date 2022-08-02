@@ -120,7 +120,6 @@ func main() {
 		panic("unknown probe type")
 	}
 
-	log.Println(*seed)
 	if *seed == -1 {
 		*seed = int64(time.Now().Nanosecond())
 	}
@@ -141,13 +140,13 @@ func main() {
 		}
 		prober.sender = t
 	case *quicProber:
-		u, err := newUDPSender(*lAddr4, *lAddr6)
+		u, err := newUDPSender(*iface, *lAddr4, *lAddr6)
 		if err != nil {
 			log.Fatal(err)
 		}
 		prober.sender = u
 	case *dnsProber:
-		u, err := newUDPSender(*lAddr4, *lAddr6)
+		u, err := newUDPSender(*iface, *lAddr4, *lAddr6)
 		if err != nil {
 			log.Fatal(err)
 		}

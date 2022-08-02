@@ -39,7 +39,7 @@ func (p *httpProber) sendProbe(ip net.IP, name string, verbose bool) error {
 	addr := net.JoinHostPort(ip.String(), "80")
 	seqAck, sport, err := p.sender.sendTCP(addr, out, verbose)
 	if err == nil && verbose {
-		log.Printf("Sent :%d -> %s:443 %s %s\n", sport, ip.String(), name, seqAck)
+		log.Printf("Sent :%d -> %s %s %s\n", sport, addr, name, seqAck)
 	}
 
 	return err

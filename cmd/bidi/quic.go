@@ -38,11 +38,9 @@ func (p *quicProber) sendProbe(ip net.IP, name string, verbose bool) error {
 	}
 
 	addr := net.JoinHostPort(ip.String(), "443")
-
-	err = p.sender.sendUDP(addr, out, verbose)
-
-	if verbose {
-		log.Printf("Sent %s %s %s\n", ip.String(), name, clientID)
+	sport, err := p.sender.sendUDP(addr, out, verbose)
+	if err == nil && verbose {
+		log.Printf("Sent :%s -> %s %s %s\n", sport, addr, name, clientID)
 	}
 
 	return err
