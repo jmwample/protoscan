@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"hash/crc32"
 	"log"
 	"math/rand"
 	"net"
@@ -9,6 +10,7 @@ import (
 	"strconv"
 	"syscall"
 	"time"
+	"unsafe"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -83,7 +85,7 @@ func (t *tcpSender) cleanTCPSender() {
 	syscall.Close(t.sockFd6)
 }
 
-func (t *tcpSender) sendTCP(dst string, payload []byte, verbose bool) (string, int, error) {
+func (t *tcpSender) sendTCP(dst string, sport int, domain string, payload []byte, verbose bool) (string, int, error) {
 
 	host, portStr, err := net.SplitHostPort(dst)
 	if err != nil {
@@ -105,14 +107,31 @@ func (t *tcpSender) sendTCP(dst string, payload []byte, verbose bool) (string, i
 		ComputeChecksums: t.checksums,
 	}
 
-	// Pick a random source port between 1000 and 65535
-	randPort := (rand.Int31() % 64535) + 1000
-	seq := rand.Uint32()
-	ack := rand.Uint32()
+	var seq = rand.Uint32()
+	var ack uint32
+	if sport == 0 {
+		// If no sport provided pick a random source port between 1000 and 65535
+		// and a random value for ack
+		sport = int((rand.Int31() % 64535) + 1000)
+		ack = rand.Uint32()
+	} else {
+		// set the ack value to be the CRC of the source port, the destination
+		// IP and the sequence number. This should allow a validation that the
+		// packet is related to a probe we sent without causing repeat seq/ack
+		// values for repeated probes (as seq is chosen at random).
+		ipByteSlice := (*[4]byte)(unsafe.Pointer(&sport))[:] // sport to []byte
+		ipByteSlice = append(ipByteSlice, ip.To16()...)      // append ip bytes
+		// ipByteSlice = append(ipByteSlice, (*[4]byte)(unsafe.Pointer(&seq))[:]...) // append seq as []byte
+		ack = crc32.ChecksumIEEE(ipByteSlice)
+
+		// See TestTCPTagValidate in shared_test.go. This tag can be validated
+		// with the source ip, destination port, and seq number fields of
+		// response packets. RST packets generally don't set their ACK value :(
+	}
 
 	// Fill TCP  Payload layer details
 	tcpLayer := layers.TCP{
-		SrcPort: layers.TCPPort(randPort),
+		SrcPort: layers.TCPPort(sport),
 		DstPort: layers.TCPPort(port),
 		PSH:     true,
 		ACK:     true,
@@ -147,11 +166,11 @@ func (t *tcpSender) sendTCP(dst string, payload []byte, verbose bool) (string, i
 	tcpLayer.SetNetworkLayerForChecksum(networkLayer)
 
 	// build syn, ack, and data payloads
-	synBuf, err := getSyn(uint32(randPort), uint32(port), seq, options, networkLayer)
+	synBuf, err := getSyn(uint32(sport), uint32(port), seq, options, networkLayer)
 	if err != nil {
 		return "", -1, err
 	}
-	ackBuf, err := getAck(uint32(randPort), uint32(port), seq+1, ack, options, networkLayer)
+	ackBuf, err := getAck(uint32(sport), uint32(port), seq+1, ack, options, networkLayer)
 	if err != nil {
 		return "", -1, err
 	}
@@ -199,7 +218,7 @@ func (t *tcpSender) sendTCP(dst string, payload []byte, verbose bool) (string, i
 		return "", -1, err
 	}
 
-	return seqAck, int(randPort), nil
+	return seqAck, int(sport), nil
 }
 
 type netLayer interface {

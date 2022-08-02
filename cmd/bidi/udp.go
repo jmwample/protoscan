@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strconv"
 )
 
 type udpSender struct {
@@ -29,7 +30,9 @@ func newUDPSender(device, lAddr4, lAddr6 string) (*udpSender, error) {
 	return &udpSender{lAddr4: localIP4.String(), lAddr6: localIP6.String()}, nil
 }
 
-func (u *udpSender) sendUDP(dst string, payload []byte, verbose bool) (string, error) {
+//
+// if sport is 0 (unset) then the Dial should generate a random source port.
+func (u *udpSender) sendUDP(dst string, sport int, payload []byte, verbose bool) (string, error) {
 	var d net.Dialer
 
 	host, _, err := net.SplitHostPort(dst)
@@ -42,13 +45,15 @@ func (u *udpSender) sendUDP(dst string, payload []byte, verbose bool) (string, e
 		if u.lAddr4 == "" {
 			return "", fmt.Errorf("no IPv4 address available")
 		}
-		d.LocalAddr, _ = net.ResolveUDPAddr("ip", u.lAddr4)
-
+		d.LocalAddr, err = net.ResolveUDPAddr("udp", net.JoinHostPort(u.lAddr4, strconv.Itoa(sport)))
+		if err != nil {
+			log.Println(err)
+		}
 	} else if !useV4 {
 		if u.lAddr6 == "" {
 			return "", fmt.Errorf("no IPv6 address available")
 		}
-		d.LocalAddr, _ = net.ResolveUDPAddr("ip", u.lAddr6)
+		d.LocalAddr, _ = net.ResolveUDPAddr("ip", net.JoinHostPort(u.lAddr6, strconv.Itoa(sport)))
 	}
 
 	conn, err := d.Dial("udp", dst)

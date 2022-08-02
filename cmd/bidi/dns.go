@@ -33,8 +33,7 @@ func (p *dnsProber) sendProbe(ip net.IP, name string, verbose bool) error {
 	}
 
 	addr := net.JoinHostPort(ip.String(), "53")
-
-	sport, err := p.sender.sendUDP(addr, out, verbose)
+	sport, err := p.sender.sendUDP(addr, 0, out, verbose)
 	if err == nil && verbose {
 		log.Printf("Sent :%s -> %s %s %s\n", sport, addr, name, hex.EncodeToString(out))
 	}

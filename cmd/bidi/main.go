@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"flag"
 	"log"
 	"math/rand"
@@ -126,33 +127,6 @@ func main() {
 	log.Println("Using seed:", *seed)
 	rand.Seed(*seed)
 
-	switch prober := p.(type) {
-	case *httpProber:
-		t, err := newTCPSender(*iface, *lAddr4, *lAddr6, !*noSynAck, *synDelay, !*noChecksums)
-		if err != nil {
-			log.Fatal(err)
-		}
-		prober.sender = t
-	case *tlsProber:
-		t, err := newTCPSender(*iface, *lAddr4, *lAddr6, !*noSynAck, *synDelay, !*noChecksums)
-		if err != nil {
-			log.Fatal(err)
-		}
-		prober.sender = t
-	case *quicProber:
-		u, err := newUDPSender(*iface, *lAddr4, *lAddr6)
-		if err != nil {
-			log.Fatal(err)
-		}
-		prober.sender = u
-	case *dnsProber:
-		u, err := newUDPSender(*iface, *lAddr4, *lAddr6)
-		if err != nil {
-			log.Fatal(err)
-		}
-		prober.sender = u
-	}
-
 	// Parse domains
 	domains, err := getDomains(*domainf)
 	if err != nil {
@@ -166,6 +140,47 @@ func main() {
 		log.Fatal(err)
 	}
 	log.Printf("Read %d ips\n", len(ips))
+
+	dkt, err := createDomainKeyTable(domains)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	dktJSON, err := json.Marshal(dkt)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println(string(dktJSON))
+
+	switch prober := p.(type) {
+	case *httpProber:
+		t, err := newTCPSender(*iface, *lAddr4, *lAddr6, !*noSynAck, *synDelay, !*noChecksums)
+		if err != nil {
+			log.Fatal(err)
+		}
+		prober.sender = t
+		prober.dkt = dkt
+	case *tlsProber:
+		t, err := newTCPSender(*iface, *lAddr4, *lAddr6, !*noSynAck, *synDelay, !*noChecksums)
+		if err != nil {
+			log.Fatal(err)
+		}
+		prober.sender = t
+		prober.dkt = dkt
+	case *quicProber:
+		u, err := newUDPSender(*iface, *lAddr4, *lAddr6)
+		if err != nil {
+			log.Fatal(err)
+		}
+		prober.sender = u
+		prober.dkt = dkt
+	case *dnsProber:
+		u, err := newUDPSender(*iface, *lAddr4, *lAddr6)
+		if err != nil {
+			log.Fatal(err)
+		}
+		prober.sender = u
+	}
 
 	jobs := make(chan *job, *nWorkers*10)
 	var wg sync.WaitGroup

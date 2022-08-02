@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
+	"math/rand"
 	"net"
 	"sync"
 
@@ -45,6 +46,22 @@ func (s *sendStats) epochReset() {
 	s.ppe = 0
 }
 
+func createDomainKeyTable(domains []string) (*keyTable, error) {
+	t := newKeyTable()
+	t.generate = func(s string) (interface{}, error) {
+		return int((rand.Int31() % 64535) + 1000), nil
+	}
+
+	for _, d := range domains {
+		_, err := t.tryInsertGenerate(d)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return t, nil
+}
+
 // getSrcIP allows us to check that there is a route to the dest with our
 // suggested source address and interface. This also allows the program to
 // automatically recover from an ipv4 source address specified for an IPv6
@@ -80,7 +97,6 @@ func getSrcIP(localIface *net.Interface, lAddr string, dstIP net.IP) (net.IP, er
 
 	return localIP, nil
 }
-
 
 func decodeOrPanic(s string) []byte {
 	b, err := hex.DecodeString(s)

@@ -19,6 +19,8 @@ const httpFmtStr = "GET / HTTP/1.1\r\nHost: %s\r\nUser-Agent: %s\r\nAccept: */*\
 
 type httpProber struct {
 	sender *tcpSender
+
+	dkt *keyTable
 }
 
 func (p *httpProber) registerFlags() {
@@ -36,8 +38,10 @@ func (p *httpProber) sendProbe(ip net.IP, name string, verbose bool) error {
 		return fmt.Errorf("failed to build tls payload: %s", err)
 	}
 
+	sport, _ := p.dkt.get(name)
+
 	addr := net.JoinHostPort(ip.String(), "80")
-	seqAck, sport, err := p.sender.sendTCP(addr, out, verbose)
+	seqAck, sport, err := p.sender.sendTCP(addr, sport.(int), name, out, verbose)
 	if err == nil && verbose {
 		log.Printf("Sent :%d -> %s %s %s\n", sport, addr, name, seqAck)
 	}
