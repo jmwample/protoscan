@@ -31,9 +31,9 @@ func (p *tlsProber) sendProbe(ip net.IP, name string, verbose bool) error {
 	}
 
 	addr := net.JoinHostPort(ip.String(), "443")
-	seqAck, err := p.sender.sendTCP(addr, out, verbose)
+	seqAck, sport, err := p.sender.sendTCP(addr, out, verbose)
 	if err == nil && verbose {
-		log.Printf("Sent %s %s %s\n", ip.String(), name, seqAck)
+		log.Printf("Sent :%d -> %s:443 %s %s\n", sport, ip.String(), name, seqAck)
 	}
 
 	return err

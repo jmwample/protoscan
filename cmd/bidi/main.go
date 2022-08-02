@@ -20,7 +20,8 @@ type prober interface {
 }
 
 type job struct {
-	domain, ip string
+	domain string
+	ip     string
 }
 
 func worker(p prober, wait time.Duration, verbose bool, ips <-chan *job, wg *sync.WaitGroup) {
@@ -28,7 +29,6 @@ func worker(p prober, wait time.Duration, verbose bool, ips <-chan *job, wg *syn
 
 	for job := range ips {
 		addr := net.ParseIP(job.ip)
-
 		err := p.sendProbe(addr, job.domain, verbose)
 		if err != nil {
 			log.Printf("Result %s,%s - error: %v\n", job.ip, job.domain, err)
@@ -120,6 +120,7 @@ func main() {
 		panic("unknown probe type")
 	}
 
+	log.Println(*seed)
 	if *seed == -1 {
 		*seed = int64(time.Now().Nanosecond())
 	}
@@ -156,10 +157,16 @@ func main() {
 	// Parse domains
 	domains, err := getDomains(*domainf)
 	if err != nil {
-		log.Println(err)
-		return
+		log.Fatal(err)
 	}
 	log.Printf("Read %d domains\n", len(domains))
+
+	// Get IPs
+	ips, err := getIPs(*ipFName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("Read %d ips\n", len(ips))
 
 	jobs := make(chan *job, *nWorkers*10)
 	var wg sync.WaitGroup
@@ -193,18 +200,14 @@ func main() {
 		}
 	}()
 
-	ips, err := getIPs(*ipFName)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	nJobs := 0
 	for _, domain := range domains {
 		for _, ip := range ips {
-			jobs <- &job{ip, domain}
+			jobs <- &job{domain: domain, ip: ip}
 			nJobs++
 		}
 	}
+	close(jobs)
 
 	wg.Wait()
 }

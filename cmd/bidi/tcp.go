@@ -83,11 +83,11 @@ func (t *tcpSender) cleanTCPSender() {
 	syscall.Close(t.sockFd6)
 }
 
-func (t *tcpSender) sendTCP(dst string, payload []byte, verbose bool) (string, error) {
+func (t *tcpSender) sendTCP(dst string, payload []byte, verbose bool) (string, int, error) {
 
 	host, portStr, err := net.SplitHostPort(dst)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse \"ip:port\": %s - %s", dst, err)
+		return "", -1, fmt.Errorf("failed to parse \"ip:port\": %s - %s", dst, err)
 	}
 	port, _ := strconv.Atoi(portStr)
 
@@ -95,9 +95,9 @@ func (t *tcpSender) sendTCP(dst string, payload []byte, verbose bool) (string, e
 
 	var useV4 = ip.To4() != nil
 	if useV4 && t.src4 == nil {
-		return "", fmt.Errorf("no IPv4 address available")
+		return "", -1, fmt.Errorf("no IPv4 address available")
 	} else if !useV4 && t.src6 == nil {
-		return "", fmt.Errorf("no IPv6 address available")
+		return "", -1, fmt.Errorf("no IPv6 address available")
 	}
 
 	options := gopacket.SerializeOptions{
@@ -149,17 +149,17 @@ func (t *tcpSender) sendTCP(dst string, payload []byte, verbose bool) (string, e
 	// build syn, ack, and data payloads
 	synBuf, err := getSyn(uint32(randPort), uint32(port), seq, options, networkLayer)
 	if err != nil {
-		return "", err
+		return "", -1, err
 	}
 	ackBuf, err := getAck(uint32(randPort), uint32(port), seq+1, ack, options, networkLayer)
 	if err != nil {
-		return "", err
+		return "", -1, err
 	}
 
 	tcpPayloadBuf := gopacket.NewSerializeBuffer()
 	err = gopacket.SerializeLayers(tcpPayloadBuf, options, networkLayer, &tcpLayer, gopacket.Payload(payload))
 	if err != nil {
-		return "", err
+		return "", -1, err
 	}
 	// XXX end of packet creation
 
@@ -183,23 +183,23 @@ func (t *tcpSender) sendTCP(dst string, payload []byte, verbose bool) (string, e
 	if t.sendSynAndAck {
 		err = sendPkt(sockFd, synBuf, addr)
 		if err != nil {
-			return "", err
+			return "", -1, err
 		}
 
 		time.Sleep(t.synDelay)
 
 		err = sendPkt(sockFd, ackBuf, addr)
 		if err != nil {
-			return "", err
+			return "", -1, err
 		}
 	}
 
 	err = sendPkt(sockFd, tcpPayloadBuf.Bytes(), addr)
 	if err != nil {
-		return "", err
+		return "", -1, err
 	}
 
-	return seqAck, nil
+	return seqAck, int(randPort), nil
 }
 
 type netLayer interface {

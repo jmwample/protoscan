@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math/rand"
 	"net"
 	"testing"
 	"time"
@@ -37,6 +38,7 @@ The calls to TLS / HTTP buildPayload are not what is causing the low pps output.
 */
 
 func Benchmark_SendProbes(b *testing.B) {
+	rand.Seed(int64(time.Now().Nanosecond()))
 	t, err := newTCPSender("wlo1", "", "", false, 0*time.Second, true)
 	if err != nil {
 		panic(err)

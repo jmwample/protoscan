@@ -1,8 +1,12 @@
 package main
 
 import (
+	"encoding/hex"
+	"math/rand"
 	"net"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -34,4 +38,44 @@ func TestRoutingMixedPreferred(t *testing.T) {
 	ip, err = getSrcIP(localIface, "::1", net.ParseIP("127.0.0.1"))
 	require.Nil(t, err)
 	require.Equal(t, "127.0.0.1", ip.String())
+}
+
+func TestRandSeedFuck(t *testing.T) {
+	buf0 := make([]byte, 8)
+	n, err := rand.Read(buf0)
+	require.Nil(t, err)
+	require.Equal(t, 8, n)
+
+	buf1 := make([]byte, 8)
+	rand.Seed(int64(time.Now().Nanosecond()))
+	n, err = rand.Read(buf1)
+	require.Nil(t, err)
+	require.Equal(t, 8, n)
+
+	buf2 := make([]byte, 8)
+	rand.Seed(int64(time.Now().Nanosecond()))
+	n, err = rand.Read(buf2)
+	require.Nil(t, err)
+	require.Equal(t, 8, n)
+
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
+
+	buf3 := make([]byte, 8)
+	go func() {
+		n, err = rand.Read(buf3)
+		require.Nil(t, err)
+		require.Equal(t, 8, n)
+		wg.Done()
+	}()
+
+	wg.Wait()
+
+	require.NotEqual(t, hex.EncodeToString(buf0), hex.EncodeToString(buf1))
+	require.NotEqual(t, hex.EncodeToString(buf0), hex.EncodeToString(buf2))
+	require.NotEqual(t, hex.EncodeToString(buf0), hex.EncodeToString(buf3))
+	require.NotEqual(t, hex.EncodeToString(buf1), hex.EncodeToString(buf2))
+	require.NotEqual(t, hex.EncodeToString(buf1), hex.EncodeToString(buf3))
+	require.NotEqual(t, hex.EncodeToString(buf2), hex.EncodeToString(buf3))
+	// t.Logf("\n%s\n%s\n%s\n%s", hex.EncodeToString(buf0), hex.EncodeToString(buf1), hex.EncodeToString(buf2), hex.EncodeToString(buf3))
 }
