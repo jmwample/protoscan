@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"net"
 	"os"
+	"path/filepath"
 	"unsafe"
 
 	"github.com/google/gopacket"
@@ -27,6 +28,8 @@ type quicProber struct {
 	sender *udpSender
 
 	dkt *keyTable
+
+	outDir string
 }
 
 func (p *quicProber) registerFlags() {
@@ -174,7 +177,7 @@ func (p *quicProber) buildCryptoFramePaylaod(name string) ([]byte, error) {
 }
 
 func (p *quicProber) handlePcap(iface string) {
-	f, _ := os.Create("quic.pcap")
+	f, _ := os.Create(filepath.Join(p.outDir, "quic.pcap"))
 	w := pcapgo.NewWriter(f)
 	w.WriteFileHeader(1600, layers.LinkTypeEthernet)
 	defer f.Close()

@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net"
 	"os"
+	"path/filepath"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -20,6 +21,8 @@ type tlsProber struct {
 	sender *tcpSender
 
 	dkt *keyTable
+
+	outDir string
 }
 
 func (p *tlsProber) registerFlags() {
@@ -104,7 +107,7 @@ func (p *tlsProber) buildPayload(name string) ([]byte, error) {
 }
 
 func (p *tlsProber) handlePcap(iface string) {
-	f, _ := os.Create("tls.pcap")
+	f, _ := os.Create(filepath.Join(p.outDir, "tls.pcap"))
 	w := pcapgo.NewWriter(f)
 	w.WriteFileHeader(1600, layers.LinkTypeEthernet)
 	defer f.Close()

@@ -2,12 +2,12 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"flag"
 	"log"
 	"math/rand"
 	"net"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -108,12 +108,25 @@ func main() {
 	noSynAck := flag.Bool("nsa", false, "[HTTP/TLS] No Syn Ack (nsa) disable syn, and ack warm up packets for tcp probes")
 	synDelay := flag.Duration("syn-delay", 2*time.Millisecond, "[HTTP/TLS] when syn ack is enabled delay between syn and data")
 	noChecksums := flag.Bool("no-checksums", false, "[HTTP/TLS] fix checksums on injected packets for TCP protocols")
+	outDir := flag.String("d", "out/", "output directory for log files")
 
 	for _, p := range probers {
 		p.registerFlags()
 	}
 
 	flag.Parse()
+
+	err := os.MkdirAll(*outDir, os.ModePerm)
+	if err != nil {
+		log.Println(err)
+	}
+
+	logFile, err := os.OpenFile(filepath.Join(*outDir, "log.out"), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("error opening file: %v", err)
+	}
+	defer logFile.Close()
+	log.SetOutput(logFile)
 
 	var p prober
 	var ok bool
@@ -146,11 +159,18 @@ func main() {
 		log.Fatal(err)
 	}
 
-	dktJSON, err := json.Marshal(dkt)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Println(string(dktJSON))
+	go func() {
+		// dump dkt to file for reference
+		dktFile, err := os.OpenFile(filepath.Join(*outDir, "dkt.json"), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			log.Fatalf("error opening dkt file: %v", err)
+		}
+		defer dktFile.Close()
+		err = dkt.marshal(dktFile)
+		if err != nil {
+			log.Fatalf("error writing domain key table: %v", err)
+		}
+	}()
 
 	switch prober := p.(type) {
 	case *httpProber:
@@ -160,6 +180,7 @@ func main() {
 		}
 		prober.sender = t
 		prober.dkt = dkt
+		prober.outDir = *outDir
 	case *tlsProber:
 		t, err := newTCPSender(*iface, *lAddr4, *lAddr6, !*noSynAck, *synDelay, !*noChecksums)
 		if err != nil {
@@ -167,6 +188,7 @@ func main() {
 		}
 		prober.sender = t
 		prober.dkt = dkt
+		prober.outDir = *outDir
 	case *quicProber:
 		u, err := newUDPSender(*iface, *lAddr4, *lAddr6)
 		if err != nil {
@@ -174,6 +196,7 @@ func main() {
 		}
 		prober.sender = u
 		prober.dkt = dkt
+		prober.outDir = *outDir
 	case *dnsProber:
 		u, err := newUDPSender(*iface, *lAddr4, *lAddr6)
 		if err != nil {

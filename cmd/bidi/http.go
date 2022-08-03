@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"path/filepath"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -21,6 +22,8 @@ type httpProber struct {
 	sender *tcpSender
 
 	dkt *keyTable
+
+	outDir string
 }
 
 func (p *httpProber) registerFlags() {
@@ -50,7 +53,7 @@ func (p *httpProber) sendProbe(ip net.IP, name string, verbose bool) error {
 }
 
 func (p *httpProber) handlePcap(iface string) {
-	f, _ := os.Create("http.pcap")
+	f, _ := os.Create(filepath.Join(p.outDir, "http.pcap"))
 	w := pcapgo.NewWriter(f)
 	w.WriteFileHeader(1600, layers.LinkTypeEthernet)
 	defer f.Close()
