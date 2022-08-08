@@ -55,7 +55,8 @@ themselves. In this sense we believe that this methodology allows us to test a
 majority of the paths on the internet for censorship responses to our crafted
 probes.
 
-\subsection{Identifying Censorship Events}
+\subsection{Identifying Bidirectional Censorship}
+\label{sec:methodology:censorship}
 
 We focus on identifying bidirectional censorship via injected responses to
 ingress traffic. This allows us to send probes from external vantage points and
@@ -63,10 +64,12 @@ receive responses that we can classify as expected or characteristic of
 censorship. We do this for several different protocols that are known or
 suspected to censored.
 
-Within our set of test domains we include a set of control domains that provide
-us with confidence about the validity of our censorship classification per IP.
 
-\subsubsection{DNS} \label{sec:methodology:censorship}
+dropped connections (we cannot find) - but we are not trying to measure inline blocking
+
+\FigProbeSend
+
+\subsubsection{DNS}
 
 % Injected DNS response record.
 Because UDP is not a reliable protocol and there is no universal ``go away''
@@ -88,61 +91,106 @@ Injected TCP RST
 
 \subsubsection{TLS}
 
-Injected TCP RST
+TLS is the most common protocol on the internet~\cite{} and provides encrypted
+communication for a majority of traffic. However, the name of the intended
+target of the connection is still included in plain text in the {\tt
+ClientHello} packet of the handshake. Monitoring this plain text {\tt
+ServerNameIndicator} (SNI) extension allows censors to snoop on the host that
+clients intend to talk to and interfere to prevent connections. For example, the
+GFW has been seen to inject TCP RST packets in response to blocklisted domain
+names in the SNI extension~\cite{}.
 
-SYN ACK PSK/ACK
+While some firewall implementations explicitly look for a singular TCP (TLS,
+HTTP, or other) packet that violates their rules, others keep a modest amount of
+state and require the TCP flow to be ``established'' before they will present
+censorship behavior. However, because routing on the internet is not typically
+symmetrical and response traffic often follows alternative routes, some high
+performance firewall implementations will trigger censorship behavior with just
+the unidirectional flow of a TCP SYN packet, followed by an ACK packet and a
+data packet with the PSH/ACK flags set. While this allows flows that use
+heterogeneous routing to be included and censored, it also allows falsified
+flows with non-existent endpoints to trigger a censorship response as there is
+no validation that the TCP handshake successfully completed.
+
+We take advantage of this by measuring censorship responses triggered by a
+singular TCP PSH/ACK packet with data, as well as responses triggered by a
+packet sequences of SYN -- ACK -- PSH/ACK with data.
 
 \subsubsection{Quic}
 
-Injected Garbage frame (would be nice to find)
+Quic is a reliable transport layer protocol built on UDP that provides
+encryption by default, faster connection establishment, and much
+more~\cite{RFC9000}. Quic is seeing growing use across the internet~\cite{} as it
+provides a malleable transport layer while supporting existing protocols like
+TLS and future protocols like HTTP3. Currently the most widely deployed use of
+Quic is for TLS1.3 in which a client sends a TLS handshake over the Quic
+transport. By default TLS1.3 still includes the SNI extension which can be
+accessed by passive observers on the wire.
 
-\medskip
+Previous research on censorship relating to the Quic protocol has positively
+identified active inline ip based blocking in the wild in order to prevent
+connections~\cite{}. However, we believe that it is possible to passively censor
+Quic using injected packets, a technique that might be deployed and measurable
+bidirectionally. While this type of censorship has not yet been seen in the
+wild, we hope to use this measurement to establishes a historical waterline for
+Quic censorship. Two potential responses that could cause the client to tear
+down the connection and would be be interesting to find are:
+\begin{itemize}
+	\item Injected Garbage Server initial
+	\item Injected Retry/offload to a non-existent host.
+\end{itemize}
 
-dropped connections (we cannot find) - but we are not trying to measure inline blocking
 
-% \subsubsection{DNS} \label{sec:methodology:censorship}
-% In general, our goal is to err on the side of caution and avoid false-positives
-% in our censorship determination. We achieve this by accounting for
-% unreliability of resolvers and domains in our lists.
+We note that censors tend to be more willing to endure collateral blocking on
+new protocols, as such, we expect that some networks may trigger a censorship
+response to our Quic probes independent of the domain we include in the SNI
+field in an attempt to leverage their existing passive censorship infrastructure
+to block the Quic protocol all together.
 
-% \para{Removing unstable resolvers.}
-% For each of the 7,843 (IPv4, IPv6) resolver pairs and 714 sensitive domains, we
-% send a DNS {\tt A} and {\tt AAAA} resource record request for a domain to the
-% IPv4 and IPv6 addresses associated with the resolver. We follow this up with
-% a {\tt A} and {\tt AAAA} resource record request for a set of 3 control domains
-% (owned and operated by us).
-% %
-% We discard data from pairs which failed to resolve any one of our control
-% domains correctly since this is a sign of resolver instability. This left us
-% with 7,441 stable resolver pairs.
-% %
+\subsubsection{Tagging}
 
-% \para{Distinguishing censorship from domain instability.}
-% For the remaining resolvers, we extract the IPv4 and IPv6 resource records
-% returned for each domain --- even those that arrive from multiple responses to
-% a single query (a sign of an on-path censor). Next, we use \texttt{zgrab2} to
-% establish TLS connections to the IP addresses contained in the resource
-% records. In each of these connections, we set the TLS SNI to be the domain
-% whose records were requested. We then locally verify the validity of the
-% retrieved TLS certificates.
-% %
-% Since the domains themselves might be unreliable, we repeat this verification
-% procedure three times. Only if this step fails all three times do we conclude
-% that the IP we obtained from that resolver for that domain was censored.
+Similar to the architecture of the zmap scanning tool, our probing architecture
+uses many threads to craft and send packets and one independent thread to listen
+and ingests responses. One consequence of this architecture is that we must
+maintain a limited amount of state internally for each connection we create.
+While injected responses to DNS probes may include the host name (in the
+response Resource Record) other protocols are not guaranteed to do so. For
+example, the TCP RST packets injected by the GFW in response to a TLS probe with
+a censored SNI will not indicate what domain the original probe included.
+Similar challenges exists for HTTP and Quic probes.
 
+To solve this problem we employ a tagging system for outgoing packets such that
+we can identify the details of the probe they correlate to and check the
+validity of the response without tracking the full connection state from start
+to finish.
+
+We start by creating a 1-to-1 mapping from domain to a random number in the
+range 1000-65535. We use this number as the source port for the outgoing packet
+meaning that we can use the destination port of any response packet to lookup
+the domain sent in the original probe. In order to ensure that response TCP
+packets are associated with our measurement and not just sent randomly we set
+the acknowledgement number of the outgoing probe to be the CRC32 of the source
+port (from our domain mapping) and the target address. This allows our ingest
+thread to quickly validate responses by checking:
+\begin{gather*}
+CRC32(PORT_{dst},ADDR_{src}) \stackrel{?}{=} SEQ - Len
+\end{gather*}
+
+For Quic responses that either return garbage or change the connection ID for
+the server initial packet we need to have access to the 8 byte connection ID
+sent in our probe. To make sure this is always available we set the source port
+for the outgoing packets from our 1-to-1 domain map and then set the connection
+ID to be the CRC64-ECMA of the source port and the target address for the
+outgoing packet. That way response packets can statelessly derive the original
+connection ID by computing the following for incoming packets.
+\begin{gather*}
+Conn\_ID = CRC64_{ECMA}(PORT_{dst},ADDR_{src})
+\end{gather*}
 
 
 \subsection{Ethics}\label{sec:methodology:ethics}
 Our experimental design has incorporated ethical considerations into the
 decision-making process at multiple stages.
-%We concern ourselves primarily with
-%the security and autonomy of human users and their ability to securely access
-%the internet.
-%Given the prevalence of self-censorship, understanding and
-%documenting the mechanisms and scope of censorship strategies can assist users
-%in better evaluating their own risk. However, censorship measurement naturally
-%entails interacting with and occasionally violating the rules of access control
-%systems.
 Censorship measurement has inherent risks and trade-offs: better understanding
 of censorship can help support and inform users, but specific measurements may
 carry risk to participants or network users.
@@ -150,7 +198,6 @@ We rely on The Menlo Report~\cite{menlo}, its companion
 guide~\cite{menlo-companion}, and the censorship specific ethical measurement
 guidelines discussed by Jones \etal \cite{jones2015ethical} to
 carefully weigh these trade-offs in our experimental design.
-%provide structure and guidance to our experimental design.
 
 \para{Consent.}
 To align with the guiding principle of \textit{respect for persons} we
@@ -160,9 +207,6 @@ association with individuals in lieu of measurement from client based
 software. While we cannot acquire direct or proxy consent from the operators of
 the open resolvers we consider the trade-off between the implied consent
 standard and the value in the measurements we make. 
-%Understanding the extent
-%and mechanisms of censorship infrastructure can help to demystify and clarify
-%risks to real users seeking to safely access the internet. It is important to
 We note that the goal of our ethical analysis is not to eliminate risk, but to
 minimize it wherever possible. As noted by Jones \etal in some cases acquiring
 consent from operators may not only be impossible, but could increase the risk to
@@ -177,8 +221,6 @@ Our study collects no personal data about any end~users, or end hosts, or
 network operators. The analysis completed herein uses randomly selected
 addresses, public Anonymous System (AS) identifiers, and country codes.  All
 measurements are initiated from within the United States.
-%at little to no risk of
-%repercussions to citizens in the countries that we examine.
 Beyond this,
 measurement domains are not drawn from any human browsing patterns or history
 as the suspected censored domains are a subset of the Satellite measurement
@@ -191,11 +233,3 @@ custom protocol scanning tool (line rate). However, the structure of the scan
 was established such that individual addresses and domains would be accessed in
 round robin order --- \ie when sending probes every target address would
 receive a first request before any target would receive the subsequent request.
-% Equivalently for validating TLS certificates, each of the 714 target domains
-% would receive a first attempted handshake before any target would receive a
-% subsequent handshake, limiting the bandwidth any one host will receive.
-
-%While we do not have an upper bound on the bandwidth that was sent
-%to individual resolvers or TLS endpoints we believe this strategy provides
-%a reasonable limitation to the impact of the measurements in this study.
-
