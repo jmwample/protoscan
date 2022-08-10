@@ -80,7 +80,7 @@ func newTCPSender(device, lAddr4, lAddr6 string, synAck bool, synDelay time.Dura
 	return t, nil
 }
 
-func (t *tcpSender) cleanTCPSender() {
+func (t *tcpSender) clean() {
 	syscall.Close(t.sockFd4)
 	syscall.Close(t.sockFd6)
 }
@@ -218,11 +218,6 @@ func (t *tcpSender) sendTCP(dst string, sport int, domain string, payload []byte
 	}
 
 	return seqAck, int(sport), nil
-}
-
-type netLayer interface {
-	gopacket.SerializableLayer
-	gopacket.NetworkLayer
 }
 
 func sendPkt(sockFd int, payload []byte, addr syscall.Sockaddr) error {

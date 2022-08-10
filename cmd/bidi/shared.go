@@ -7,6 +7,7 @@ import (
 	"net"
 	"sync"
 
+	"github.com/google/gopacket"
 	"github.com/google/gopacket/routing"
 )
 
@@ -104,4 +105,9 @@ func decodeOrPanic(s string) []byte {
 		panic(err)
 	}
 	return b
+}
+
+type netLayer interface {
+	gopacket.SerializableLayer
+	gopacket.NetworkLayer
 }

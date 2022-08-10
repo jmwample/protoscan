@@ -181,6 +181,7 @@ func main() {
 		prober.sender = t
 		prober.dkt = dkt
 		prober.outDir = *outDir
+		defer t.clean()
 	case *tlsProber:
 		t, err := newTCPSender(*iface, *lAddr4, *lAddr6, !*noSynAck, *synDelay, !*noChecksums)
 		if err != nil {
@@ -189,20 +190,23 @@ func main() {
 		prober.sender = t
 		prober.dkt = dkt
 		prober.outDir = *outDir
+		defer t.clean()
 	case *quicProber:
-		u, err := newUDPSender(*iface, *lAddr4, *lAddr6)
+		u, err := newUDPSender(*iface, *lAddr4, *lAddr6, true, !*noChecksums)
 		if err != nil {
 			log.Fatal(err)
 		}
 		prober.sender = u
 		prober.dkt = dkt
 		prober.outDir = *outDir
+		defer u.clean()
 	case *dnsProber:
-		u, err := newUDPSender(*iface, *lAddr4, *lAddr6)
+		u, err := newUDPSender(*iface, *lAddr4, *lAddr6, false, !*noChecksums)
 		if err != nil {
 			log.Fatal(err)
 		}
 		prober.sender = u
+		defer u.clean()
 	}
 
 	jobs := make(chan *job, *nWorkers*10)
@@ -247,4 +251,7 @@ func main() {
 	close(jobs)
 
 	wg.Wait()
+
+	// sleep for 15 seconds while handlePcap still runs in case of delayed responses
+	// time.Sleep(15 * time.Second)
 }
