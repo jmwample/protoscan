@@ -1,59 +1,66 @@
-\section{Dataset and Methodology}\label{sec:methodology}
+\section{Datasets \& Methodology}\label{sec:methodology}
 
-
-
-% The analysis presented in the remainder of this paper is based on the results of
-% 22.4M DNS {\tt A} and {\tt AAAA} resolution requests for 714 domains sent to
-% 7,843 IPv4- and IPv6-capable resolvers located in 128 countries.
-% %
-% In this section, we explain our process for identifying resolver targets for
-% our queries (\Cref{sec:methodology:resolvers}), domains that are the subject of
-% our queries (\Cref{sec:methodology:domains}), and our process for identifying
-% the occurrence of a censorship event from the results of each query
-% (\Cref{sec:methodology:censorship}).
-
+In this section we outline our measurement technique for establishing a breadth
+based understanding of bidirectional censors on the internet. We cover the
+details of the various probes that we send as well as the sources from which we
+draw target addresses and domains that trigger censorship responses.
 
 \subsection{Selecting target domains}
 \label{sec:methodology:domains}
 As our primary goal is to identify the prevalence of bidirectional censorship
 capabilities at local, organizational, or national scale we require a list of
 domains that will trigger censorship responses. We begin by selecting domains
-from censored planet lists, then for specific case studies we use crafted
-targeted lists of domains known to be censored - i.e. the Roskomnadzor
-censorship domain name list or Russia.
+from censored planet lists, then for specific case studies we use more targeted
+lists of domains known to be censored in specific - i.e. the Roskomnadzor
+censorship domain name list for Russia~\cite{}. If no well coordinated public
+list is available, for country specific case studies we use the censored planet
+list tailored to the individual country.
+
+We supplement this set with multiple control domains that we host in the US that
+provide valid A and AAAA records. These controls are not present in any
+blocklist, nor are they are not subdomains or substring matches of any
+blocklisted domain in a blocklist that we are aware of. This provides a baseline
+against which we can determine whether or not responses are ``normal'' when
+requests contain blocklisted domain names.
 
 \subsection{Selecting IP Addresses}
 \label{subsec:selecting-ips}
-We select IP addresses dynamically at the time of each experiment in order to
-accomplish  a specific goal. The goal is to identify non-responsive addresses in
-censoring allocations such that benign control probes receive no response. This
-provides a contrast that allows us to identify abnormal censorship responses.
+Our goal in selecting target IP addresses for each experiment is to identify a set of
+non-responsive hosts within IP address allocations that transit a link monitored
+by a censor such that benign control probes receive a predictable response or no
+response at all, but sensitive domains trigger characteristic responses from the
+on path censor.
 
-IPv4 and IPv6
-
-For each individual protocol that we measure we need to target non-responsive
-addresses, or understand benign ''go away'' responses that we expect in response
-to control probes. One way that we can do this is by using the
-Zmap~\cite{Durumeric13zmap} tool to perform a port scan on the port associated
-with the protocol (e.g. TCP443 for TLS, UDP53 for DNS, etc.) and filter out
-addresses that are at all responsive. For example, we scan TCP 443 across the
-whole IPv4 space using a syn probe to identify the list of responsive addresses.
-When selecting addresses we then incorporate this list by actively avoiding
-responsive hosts.
-
+Fortunately, a significant majority of ipv4 addresses (and an even more
+overwhelming majority in IPv6) are not servers that provide access to the
+services that we measure. In fact, around 1\% of addresses in the IPv4 space
+will complete a TCP handshake for port 443~\cite{}. The rate is similar for
+TCP:80 and UDP:53. UDP:443 is even more rare as Quic is a developing
+protocol and DTLS is not a commonly used. As such addresses chosen at random are
+overwhelmingly likely to not host servers that respond to benign requests.
+% For each individual protocol that we measure we need to target non-responsive
+% addresses, or understand benign ''go away'' responses elicited by control
+% probes. One way that we can do this is by using the
+% Zmap~\cite{Durumeric13zmap} tool to perform a port scan on the port associated
+% with the protocol (e.g. TCP443 for TLS, UDP53 for DNS, etc.) and filter out
+% addresses that are at all responsive. For example, we scan TCP 443 across the
+% whole IPv4 space using a syn probe to identify the list of responsive addresses.
+% When selecting addresses we then incorporate this list by actively avoiding
+% responsive hosts.
 
 Given the significant number of domains that we endeavour to include in our
 measurement it is impractical to scan the entire IPv4 space for each domain.
 Further, given the scale of the IPv6 addresses space it is impossible to scan
-all available addresses with even one domain. In order to achieve a
-representative result in light of these limitations we select a set of $N$
-addresses at random from each announced IPv4 and IPv6 subnet allocations for
-each probe. While addresses are typically not used at random within subnet
-allocation and our address selections do not represent this human factor, our
-goal it to test the penultimate hops for censorship, not reach the end hosts
-themselves. In this sense we believe that this methodology allows us to test a
-majority of the paths on the internet for censorship responses to our crafted
-probes.
+all available addresses for even one domain. In order to achieve a
+representative result in light of these limitations we select a set of $N=5$
+addresses at random from each announced IPv4 and IPv6 subnet allocations. While
+addresses are typically not used at random within subnet allocation and our
+address selections do not represent this human factor, our goal is to test for
+on path censorship up to the penultimate hop, not reach the end hosts
+themselves. We believe that this breadth based strategy overcomes limitations of
+which portions of allocated subnets are unrouted or privately subdivided as the
+probes route {\bf towards} the allocated subnet testing a majority of the paths
+on the internet with tunable redundancy for censorship responses along the way.
 
 \subsection{Identifying Bidirectional Censorship}
 \label{sec:methodology:censorship}
@@ -61,80 +68,98 @@ probes.
 We focus on identifying bidirectional censorship via injected responses to
 ingress traffic. This allows us to send probes from external vantage points and
 receive responses that we can classify as expected or characteristic of
-censorship. We do this for several different protocols that are known or
-suspected to censored.
+censorship. We do this for several different protocols that are known (or
+suspected) to be censored.
 
 
-dropped connections (we cannot find) - but we are not trying to measure inline blocking
+% dropped connections (we cannot find) - but we are not trying to measure inline blocking
 
 \FigProbeSend
 
-\subsubsection{DNS}
-
-% Injected DNS response record.
-Because UDP is not a reliable protocol and there is no universal ``go away''
-message any resource record that we receive in response to the probes are
-treated as indicative of censorship.
-
-% A vs AAAA
-For our measurement we send one {\tt A} and one {\tt AAAA} query per domain to
-each of our selected target addresses. This allows us to make a loose, bt direct
-comparison of censorship rates for IPv4 and IPv6 resource records.
-
-\subsubsection{HTTP}
-
-injected block Pages
-
-Injected TCP RST
-
-% Keyword?
-
-\subsubsection{TLS}
-
-TLS is the most common protocol on the internet~\cite{} and provides encrypted
-communication for a majority of traffic. However, the name of the intended
-target of the connection is still included in plain text in the {\tt
-ClientHello} packet of the handshake. Monitoring this plain text {\tt
-ServerNameIndicator} (SNI) extension allows censors to snoop on the host that
-clients intend to talk to and interfere to prevent connections. For example, the
-GFW has been seen to inject TCP RST packets in response to blocklisted domain
-names in the SNI extension~\cite{}.
-
-While some firewall implementations explicitly look for a singular TCP (TLS,
-HTTP, or other) packet that violates their rules, others keep a modest amount of
-state and require the TCP flow to be ``established'' before they will present
+\subsubsection{TCP}
+While some firewall implementations explicitly look for singular TCP (TLS, HTTP,
+or other) packets that violate their rules, others keep a modest amount of state
+and require the TCP flow to be ``established'' before they will present
 censorship behavior. However, because routing on the internet is not typically
 symmetrical and response traffic often follows alternative routes, some high
 performance firewall implementations will trigger censorship behavior with just
-the unidirectional flow of a TCP SYN packet, followed by an ACK packet and a
-data packet with the PSH/ACK flags set. While this allows flows that use
-heterogeneous routing to be included and censored, it also allows falsified
-flows with non-existent endpoints to trigger a censorship response as there is
-no validation that the TCP handshake successfully completed.
+the unidirectional client-to-station flow of a TCP SYN packet, followed by an
+ACK packet and a data packet with the PSH/ACK flags set. While this allows flows
+that use heterogeneous routing to be included and censored, it also allows
+falsified flows with non-existent endpoints to trigger a censorship response as
+there is no validation that the TCP handshake successfully completed.
 
 We take advantage of this by measuring censorship responses triggered by a
 singular TCP PSH/ACK packet with data, as well as responses triggered by a
 packet sequences of SYN -- ACK -- PSH/ACK with data.
 
-\subsubsection{Quic}
 
-Quic is a reliable transport layer protocol built on UDP that provides
+\textbf{HTTP}, one of the most common protocols on the internet~\cite{},
+provides a plaintext format that allows clients to request webpages and their
+resources. As a plaintext protocol, HTTP is known to be monitored inline for
+blocklisted elements such as keywords or domain names. The HTTP protocol
+provides no guarantee of authenticity or integrity, which allows attackers to
+inject response ``block pages'' in place of the content that the client
+requested. Alternatively censors can tear down connection in response to the
+presence of blocklisted elements by terminating the underlying TCP connection
+with an injected RST packet.
+
+Our HTTP probe data consists of a HTTP request crafted to trigger censorship
+using blocklisted domains in the \texttt{HOST} header.
+% Add/ Test Keyword based blocking?
+
+\textbf{TLS} is the most commonly used protocol on the internet~\cite{} and
+provides encrypted communication for a majority of traffic. However, the name of
+the intended target of a TLS connection is still included in plain text in the
+{\tt ClientHello} packet of the handshake for all implementations of the most up
+to date specifications. Monitoring this plain text {\tt ServerNameIndicator}
+(SNI) extension allows censors to snoop on the host that clients intend to talk
+to and interfere to prevent connections. For example, the GFW has been seen to
+inject TCP RST packets in response to TLS {\tt ClientHello} packets with a
+blocklisted domain name in the SNI extension~\cite{}.
+
+Our TLS probe data consists of a TLS \texttt{ClientHello} crafted to
+trigger censorship using blocklisted domains in the SNI field.
+
+\subsubsection{UDP}
+
+% A vs AAAA
+\textbf{DNS} is a common plaintext protocol sent over UDP required for resolving
+human readable domain names into internet routable IP addresses. As such it is a
+common target for censorship where on-path attackers will inject falsified
+responses answering resource requests for blocklisted domain names.
+
+When requests are sent to legitimate DNS resolvers passive censors rely on their
+injected response to reach the client that sent the request before any
+legitimate response. When a DNS request is sent to a non-resolver the
+client will typically receive no response, or an ICMP unreachable message.
+Because of this we treat any Resource Records we receive in response to probes
+sent to a non-resolver (host that fail to resolve our control domains) as a
+censorship response.
+
+We send one {\tt A} and one {\tt AAAA} query per domain to each of our selected
+target addresses. This allows us to make a loose, but direct comparison of
+censorship rates for IPv4 and IPv6 resource records.
+
+\textbf{Quic} is a reliable transport layer protocol built on UDP that provides
 encryption by default, faster connection establishment, and much
-more~\cite{RFC9000}. Quic is seeing growing use across the internet~\cite{} as it
-provides a malleable transport layer while supporting existing protocols like
+more~\cite{RFC9000}. Quic is seeing growing use across the internet~\cite{} as
+it provides a malleable transport layer while supporting existing protocols like
 TLS and future protocols like HTTP3. Currently the most widely deployed use of
 Quic is for TLS1.3 in which a client sends a TLS handshake over the Quic
-transport. By default TLS1.3 still includes the SNI extension which can be
-accessed by passive observers on the wire.
+transport. By default TLS1.3 still includes the plaintext {\tt
+ServerNameIndicator} (SNI) extension which can be accessed by passive observers
+on the wire.
 
 Previous research on censorship relating to the Quic protocol has positively
 identified active inline ip based blocking in the wild in order to prevent
-connections~\cite{}. However, we believe that it is possible to passively censor
-Quic using injected packets, a technique that might be deployed and measurable
-bidirectionally. While this type of censorship has not yet been seen in the
-wild, we hope to use this measurement to establishes a historical waterline for
-Quic censorship. Two potential responses that could cause the client to tear
-down the connection and would be be interesting to find are:
+connections~\cite{}. However, we believe that it is possible for a passive
+inline adversary to censor Quic using injected packets, a technique that might be
+deployed and measurable bidirectionally. While this type of censorship has not
+yet been seen in the wild, we hope to use this measurement to establishes a
+historical waterline for Quic censorship. Two potential responses that could
+cause the client to tear down the connection and would be be interesting to find
+are:
 \begin{itemize}
 	\item Injected Garbage Server initial
 	\item Injected Retry/offload to a non-existent host.
@@ -189,47 +214,26 @@ Conn\_ID = CRC64_{ECMA}(PORT_{dst},ADDR_{src})
 
 
 \subsection{Ethics}\label{sec:methodology:ethics}
+
 Our experimental design has incorporated ethical considerations into the
-decision-making process at multiple stages.
-Censorship measurement has inherent risks and trade-offs: better understanding
-of censorship can help support and inform users, but specific measurements may
-carry risk to participants or network users.
-We rely on The Menlo Report~\cite{menlo}, its companion
-guide~\cite{menlo-companion}, and the censorship specific ethical measurement
-guidelines discussed by Jones \etal \cite{jones2015ethical} to
-carefully weigh these trade-offs in our experimental design.
+decision-making process at multiple stages. Censorship measurement has inherent
+risks and trade-offs: better understanding of censorship can help support and
+inform users, but specific measurements may carry risk to participants or
+network users. Measurement of bidirectional censorship typically allows
+researchers to limit the number of third parties implicated in experiments as
+the censorship response can be triggered by either ingress or egress traffic
+removing the need for cooperation by individual hosts or hosting services within
+a censoring region. Vantage points are instead hosted in regions that do not
+censor connections and allow for researchers to freely measure the internet.
 
-\para{Consent.}
-To align with the guiding principle of \textit{respect for persons} we
-structure the data collection to implicate as few individuals as possible.
-Specifically we rely on open resolvers which typically have little or no direct
-association with individuals in lieu of measurement from client based
-software. While we cannot acquire direct or proxy consent from the operators of
-the open resolvers we consider the trade-off between the implied consent
-standard and the value in the measurements we make. 
-We note that the goal of our ethical analysis is not to eliminate risk, but to
-minimize it wherever possible. As noted by Jones \etal in some cases acquiring
-consent from operators may not only be impossible, but could increase the risk to
-operators as it introduces their acknowledgement of, or active participation
-in, the measurement at hand~\cite{jones2015ethical}. This analysis aligns with
-previous work relying on open resolvers to collect impactful results while
-minimizing risk on
-individuals~\cite{pearce2017global,scott2016satellite,sundara2020censored}.
-
-\para{Privacy.}
-Our study collects no personal data about any end~users, or end hosts, or
-network operators. The analysis completed herein uses randomly selected
-addresses, public Anonymous System (AS) identifiers, and country codes.  All
-measurements are initiated from within the United States.
-Beyond this,
-measurement domains are not drawn from any human browsing patterns or history
-as the suspected censored domains are a subset of the Satellite measurement
-results (\cf \Cref{sec:methodology:domains}).
-
-\para{Resource usage.}
 The vantage that was used for data collection is connected to the internet with
-a 1 Gbps interface that scanned using the default rates for {\tt zmap} and our
-custom protocol scanning tool (line rate). However, the structure of the scan
-was established such that individual addresses and domains would be accessed in
-round robin order --- \ie when sending probes every target address would
-receive a first request before any target would receive the subsequent request.
+a 1 Gbps interface that scanned using the default rates for our custom protocol
+scanning tool (line rate). However, the structure of the scan was established
+such that individual addresses and domains would be accessed in round robin
+order --- \ie when sending probes every target address would receive a first
+request before any target would receive the subsequent request.
+
+We encourage readers to consult The Menlo Report~\cite{menlo}, its companion
+guide~\cite{menlo-companion}, and the censorship specific ethical measurement
+guidelines outlined by Jones \etal \cite{jones2015ethical} for further
+discussion of ethical design for internet measurement.

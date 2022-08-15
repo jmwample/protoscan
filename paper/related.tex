@@ -1,31 +1,12 @@
 \section{Related Work}\label{sec:related}
-%% Leaving as TODO for resubmission or revision.... 
-% Our work contributes to two domains. First, we make contributions to the
-% understanding of DNS censorship, it's implementation in different regions, and
-% it's vulnerability to circumvention. Second, we make contributions to the
-% understanding of protocol and network inconsistencies that arise due to the
-% Internet's transition to IPv6. In this section, we provide an overview of
-% research in both domains.
-% 
-% \subsection{DNS censorship} \label{sec:related:dns}
-There is a significant body of previous work investigating DNS based censorship
-strategies which can be generally broken down along several dimensions: by their
-duration, scope, and vantage points.
 
-\para{Longitudinal or snapshot measurements of DNS censorship.}
-Many initial investigations into censorship techniques and
-proposals for measurement methodology provide an evaluation of DNS censorship
-during a single snapshot in time \cite{Anonymous2020:TripletCensors,
-global2002great, vandersloot2018quack, scott2016satellite, pearce2017global}. 
-Similarly, a snapshot can capture DNS censorship centering around a specific
-event like an election or social uprising \cite{aryan2013internet}.  Established
-methodology can then be used to gain perspectives on the way that censorship
-evolves over time as part of  a longitudinal measurement
-\cite{USESEC21:GFWatch, filasto2012ooni, sundara2020censored, niaki2020iclab,
-razaghpanah2016exploring}. Our work provides a snapshot view of DNS censorship
-during the period of transition from IPv4 to IPv6.
+There is a significant body of previous work investigating censorship
+strategies using characteristic protocol responses to probes sent from outside
+of the country. In this segment we break down the contributions of those works
+and their relation to the measurement that we perform herein.
 
-\para{Regional or global measurements of DNS censorship.}
+\subsection{Regional or global measurements of Bidirectional censorship.}
+
 Censorship strategies are not universal and each censor is unique to some
 degree. Targeted measurement studies contribute to a better understanding of
 block-list infrastructure ~\cite{ramesh2020decentralized, USESEC21:GFWatch} and
@@ -39,48 +20,16 @@ lens of the differences in IPv4 and IPv6 censorship deployment, we are able to
 make data-driven hypotheses about the censorship infrastructure deployed in
 several countries.
 
-\para{Using open resolvers as measurement vantage points.}
-Open DNS resolvers provide a unique vantage point from which to study the
-Internet and a significant number of previous efforts have relied on them to
-gain insights into the censorship mechanisms in different regions.
+\para{DNS}
 
-In 2007, Lowe \etal queried open resolvers hosted within China eliciting
-injected responses. This was the first use of open resolvers to characterize
-Chinese censorship infrastructure and strategy~\cite{lowe2007great}. In 2008
-%Dagon \etal performed a survey of open DNS resolvers looking for resolvers that
-%would intentionally provide incorrect or malicious DNS records relating to
-%phishing attempts~\cite{dagon2008corrupted}.
-In 2012, anonymous authors focused on the Chinese Great Firewall's DNS
-injection and the collateral poisoning effect that it had on open resolvers
-around the world~\cite{nebuchadnezzar2012collateral}. In 2014, Wander \etal
-used open resolvers to look more broadly for global poisoning of DNS resolution
-by any censoring country finding that spoofed addresses were leaking primarily
-from China and Iran ~\cite{wander2014measurement}. Similar to Dagon \etal, in
-2015 K{\"u}hrer \etal performed a global study of the reliability of open DNS
-resolution finding evidence of censorship, injected advertisements, and other
-suspicious or malicious behavior by returned addresses~\cite{kuhrer2015going}.
+\para{TLS}
 
-More recently, Satellite (2016) outlined a methodology for regularly
-discovering the set of available open resolvers and querying hosts in order to
-detect paths that return incorrect or inconsistent resource
-records~\cite{scott2016satellite}. Iris (2017) relied on a similar scanning
-methodology but developed a set of metrics using follow-up scans and requests
-that allow the differentiation between inconsistency, misconfiguration, and
-manipulation~\cite{pearce2017global}. These metrics are based on several
-factors including: address consistency, TLS certificate validation, HTTP
-content hash, geolocation, DNS PTR lookup, and AS information. These
-supplemental elements allow Iris to handle cases like CDNs, virtual hosting,
-distributed / forwarded resolution requests and more. The 2020 Censored Planet
-project incorporated and extended the methods of the Satellite and Iris as part
-of a comprehensive and longitudinal global censorship measurement
-study~\cite{sundara2020censored}. 
-%
-Although several of these measurement platforms perform filtering to identify
-reliable resolvers, they are all limited to using open resolvers in the IPv4
-space. Consequently, they are unable to provide insights into the state of IPv6
-censorship.
+\para{HTTP}
 
-\para{IPv6 censorship measurement.} 
+\para{Quic}
+
+
+\subsection{IPv6 censorship measurement.}
 Previous censorship studies primarily focus on measurements in the context of
 IPv4. However, there have been several efforts to explicitly incorporate IPv6.
 In March 2020 Hoang \etal began collection of DNS records injected by the Great
@@ -93,12 +42,11 @@ compare the injection rates of A vs AAAA or differences in injection to DNS
 queries sent over IPv4 versus IPv6, our efforts complement their findings and
 provide a more detailed understanding of IPv6 censorship in China.
 %
-Although not focused on DNS censorship, a 2021 investigation of HTTP keyword
-block-lists associated with the Great Firewall found that results are largely
-the same between IPv4 and IPv6~\cite{weinberg2021chinese}. However, the authors
-note that over IPv6 connections, the the Firewall failed to apply it's
-signature temporary 90 second ``penalty box'' blocking subsequent connections
-between the two hosts described by numerous previous
-studies~\cite{xu2011internet,clayton2006ignoring}. This supports our finding
-that for now the GFW infrastructure supporting IPv4 and IPv6 are implemented
-and/or deployed independently.
+A 2021 investigation of HTTP keyword block-lists associated with the Great
+Firewall found that results are largely the same between IPv4 and
+IPv6~\cite{weinberg2021chinese}. However, the authors note that over IPv6
+connections, the the Firewall failed to apply it's signature temporary 90 second
+``penalty box'' blocking subsequent connections between the two hosts described
+by numerous previous studies~\cite{xu2011internet,clayton2006ignoring}. This
+supports our finding that for now the GFW infrastructure supporting IPv4 and
+IPv6 are implemented and/or deployed independently.
