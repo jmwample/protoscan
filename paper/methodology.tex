@@ -93,84 +93,26 @@ We take advantage of this by measuring censorship responses triggered by a
 singular TCP PSH/ACK packet with data, as well as responses triggered by a
 packet sequences of SYN -- ACK -- PSH/ACK with data.
 
-
-\textbf{HTTP}, one of the most common protocols on the internet~\cite{},
-provides a plaintext format that allows clients to request webpages and their
-resources. As a plaintext protocol, HTTP is known to be monitored inline for
-blocklisted elements such as keywords or domain names. The HTTP protocol
-provides no guarantee of authenticity or integrity, which allows attackers to
-inject response ``block pages'' in place of the content that the client
-requested. Alternatively censors can tear down connection in response to the
-presence of blocklisted elements by terminating the underlying TCP connection
-with an injected RST packet.
-
-Our HTTP probe data consists of a HTTP request crafted to trigger censorship
-using blocklisted domains in the \texttt{HOST} header.
+Our \textbf{HTTP} probe data consists of a HTTP request crafted to trigger
+censorship using blocklisted domains in the \texttt{HOST} header.
 % Add/ Test Keyword based blocking?
 
-\textbf{TLS} is the most commonly used protocol on the internet~\cite{} and
-provides encrypted communication for a majority of traffic. However, the name of
-the intended target of a TLS connection is still included in plain text in the
-{\tt ClientHello} packet of the handshake for all implementations of the most up
-to date specifications. Monitoring this plain text {\tt ServerNameIndicator}
-(SNI) extension allows censors to snoop on the host that clients intend to talk
-to and interfere to prevent connections. For example, the GFW has been seen to
-inject TCP RST packets in response to TLS {\tt ClientHello} packets with a
-blocklisted domain name in the SNI extension~\cite{}.
-
-Our TLS probe data consists of a TLS \texttt{ClientHello} crafted to
-trigger censorship using blocklisted domains in the SNI field.
+Our \textbf{TLS} probe data consists of a TLS \texttt{ClientHello} crafted to
+trigger censorship using blocklisted domains in the SNI extension.
 
 \subsubsection{UDP}
-
-% A vs AAAA
-\textbf{DNS} is a common plaintext protocol sent over UDP required for resolving
-human readable domain names into internet routable IP addresses. As such it is a
-common target for censorship where on-path attackers will inject falsified
-responses answering resource requests for blocklisted domain names.
-
-When requests are sent to legitimate DNS resolvers passive censors rely on their
-injected response to reach the client that sent the request before any
-legitimate response. When a DNS request is sent to a non-resolver the
-client will typically receive no response, or an ICMP unreachable message.
-Because of this we treat any Resource Records we receive in response to probes
-sent to a non-resolver (host that fail to resolve our control domains) as a
-censorship response.
-
-We send one {\tt A} and one {\tt AAAA} query per domain to each of our selected
-target addresses. This allows us to make a loose, but direct comparison of
-censorship rates for IPv4 and IPv6 resource records.
-
-\textbf{Quic} is a reliable transport layer protocol built on UDP that provides
-encryption by default, faster connection establishment, and much
-more~\cite{RFC9000}. Quic is seeing growing use across the internet~\cite{} as
-it provides a malleable transport layer while supporting existing protocols like
-TLS and future protocols like HTTP3. Currently the most widely deployed use of
-Quic is for TLS1.3 in which a client sends a TLS handshake over the Quic
-transport. By default TLS1.3 still includes the plaintext {\tt
-ServerNameIndicator} (SNI) extension which can be accessed by passive observers
-on the wire.
-
-Previous research on censorship relating to the Quic protocol has positively
-identified active inline ip based blocking in the wild in order to prevent
-connections~\cite{}. However, we believe that it is possible for a passive
-inline adversary to censor Quic using injected packets, a technique that might be
-deployed and measurable bidirectionally. While this type of censorship has not
-yet been seen in the wild, we hope to use this measurement to establishes a
-historical waterline for Quic censorship. Two potential responses that could
-cause the client to tear down the connection and would be be interesting to find
-are:
-\begin{itemize}
-	\item Injected Garbage Server initial
-	\item Injected Retry/offload to a non-existent host.
-\end{itemize}
+To measure \textbf{DNS} we send one {\tt A} and one {\tt AAAA} query per domain
+to each of our selected target addresses. This allows us to make a loose, but
+direct comparison of censorship rates for IPv4 and IPv6 resource records.
 
 
-We note that censors tend to be more willing to endure collateral blocking on
-new protocols, as such, we expect that some networks may trigger a censorship
-response to our Quic probes independent of the domain we include in the SNI
-field in an attempt to leverage their existing passive censorship infrastructure
-to block the Quic protocol all together.
+Our \textbf{Quic} probe consists of a client initial frame that contains a
+TLS1.3 {\tt ClientHello} with the domain in question in the SNI extension. In
+following with the Quic specification the payload portion of the frame is
+encrypted using an a key derived using an HKDF on our selected connection ID.
+While on-path attackers can decrypt this initial packet and inspect the
+plaintext TLS packet including SNI, they are forced to perform a relatively
+costly HKDF in order to do so.
 
 \subsubsection{Tagging}
 

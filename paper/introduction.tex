@@ -1,5 +1,6 @@
 \section{Introduction}\label{sec:intro}
 
+\if{0}
 Internet censorship is a global problem that affects over half the world's
 population. Censors rely on sophisticated network middleboxes to inspect and
 block traffic. A core component of Internet censorship is DNS blocking, and
@@ -112,6 +113,7 @@ IP protocol version in \Cref{sec:infrastructure}. We select several case studies
 to highlight in \Cref{sec:cases} before covering related work in
 \Cref{sec:related}. Finally \Cref{sec:discussion} provides discussion and
 contextualization of this work before concluding.
+\fi
 
 % Censorship is bad
 % Censorship measurements don't hurt
@@ -122,88 +124,3 @@ contextualization of this work before concluding.
 % High level takeaways: some censors bad at IPv6
 % -Clear bias toward IPv4, though most censors have some IPv6 capabilities
 % -
-
-\if0
-%% hook
-\para{The IPv6 transition introduces policy inconsistencies.}
-The deployment of the IPv6 standard is now mainstream with nearly 35\% of
-current Internet traffic being served over native IPv6 connections
-\cite{Google-IPv6}. However, regardless of the recent increases in IPv6
-availability and deployments, it is expected that a complete transition to IPv6
-is unlikely to occur in the near future \cite{Prince-CF2013, Huston-APNIC2021}.
-%
-Consequently, this slow transition from the IPv4 to IPv6 protocol has
-encumbered network operators with the task of supporting, securing, and
-simultaneously maintaining both types of networks which have fundamentally
-different performance characteristics \cite{Dhamdhere-IMC2012}, routing
-behaviors and network topologies \cite{Czyz-SIGCOMM2014}.
-%
-% highlight prior work
-In fact, prior research has shown that such maintenance of dual-stack
-deployments can be challenging and result in inconsistent network policy
-enforcement.
-%
-For example, Czyz \etal \cite{Czyz-NDSS2016} found that dual-stack end-hosts
-were found to have unintentional and significant access control policy
-inconsistencies when comparing their IPv4 and IPv6 interfaces. 
-
-%% Our angle
-\para{Policy inconsistencies have the potential to benefit censorship
-circumvention tools.}
-Despite the concerns prompted by the identification of such policy
-inconsistencies, we recognize that their presence may also present unique
-opportunities to developers of censorship circumvention tools. For example,
-capabilities of tools may be improved by opportunistically leveraging the IPv6
-protocol when a censorship directive is implemented with IPv4 infrastructure
-but not IPv6 infrastructure.
-%
-% why do we care
-Making such gains, even in the short-term, is important given the arms race
-nature of censorship and its circumvention \cite{Tschantz-SP2016}.
-%
-%% what gap exists
-What is lacking, however, is a data-driven understanding of what
-inconsistencies exist in information controls deployments and, more generally,
-how network operators tasked with maintaining information controls and
-censorship deployments are handling the v4-to-v6 transition. 
-
-\para{Our contributions.}
-% one-liner of our work
-Our work reduces this gap in knowledge by identifying inconsistencies in DNS
-censorship over IPv4 and IPv6 infrastructure. More specifically, we make the
-following contributions.
-% In doing so, we make the following contributions:
-
-\begin{itemize}
-
-%   \item {\it Methodological improvements (\Cref{sec:methods}).} 
-%     We begin by building on the DNS censorship identification approaches used
-%     by prior work. More specifically, we take steps to improve the reliability
-%     of DNS censorship identification by integrating data from the TLS protocol
-%     and filtering unreliable DNS resolvers.
-
-  \item {\it Measure prevalence of DNS censorship (\Cref{sec:prevalence}).} 
-    We conduct the first large-scale measurement of IPv6 DNS censorship in
-    \fixme{XX} IPv6-connected countries. We find \rnnote{fill in nice result summary here.}
-
-  \item {\it Characterize differences due to resource record types
-    (\Cref{sec:resources}).}
-    We then focus on the differences observed in DNS censorship based on
-    whether the DNS query requested an IPv4 ({\tt A} record) or IPv6 address
-    ({\tt AAAA} record). We find that \rnnote{summary}.
-
-  \item {\it Characterize differences due to network infrastructure
-    (\Cref{sec:infrastructure}).}
-    Finally, we focus on DNS censorship policy differences that occur in
-    dual-stack resolver deployments --- \ie where the censorship determination
-    is different for a resolver's IPv4 and IPv6 interfaces. We find that
-    \rnnote{summary}.
-
-\end{itemize}
-
-Taken all together, this study provides a first look at IPv6 DNS censorship and
-the policy gaps that arise from the IPv6 transition. We expand on the
-implications of our research, for circumvention tool developers and measurement
-researchers, in \Cref{sec:discussion}.
-
-\fi

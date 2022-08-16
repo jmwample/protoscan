@@ -38,140 +38,42 @@ our data, and Maxmind's datasets for geolocating and classifying connection
 types of our resolvers. Although each of these datasets has been validated in
 the past and are commonly used in research, our results and their corresponding
 analyses are limited by their reliability.
-% 
-% We draw much of the initial state for conducting our experiments and analyzing 
-% the results from previous work. This includes the target domain selection as
-% outlined in \Cref{sec:methodology:domains} which relies on the accuracy of the
-% Satellite project. Similarly we use supplemental sources of information to
-% classify and categorize our data. We specifically rely on the accuracy of the
-% MaxMind geolocation and network classification datasets to inform our
-% understanding of each open resolver. We also rely on the McAfee domain
-% categorization system to provide categorical information about our selected
-% target domains. Our results and supported analyses are limited by the
-% reliability of these sources of information.
 
-\para{Statistical limitations.}
-Throughout our study, we aimed to err on the side of caution in order to avoid
-presenting false-positives in our results. Therefore, we relied on rigorous
-statistical approaches in order to identify differences in censorship between
-{\tt A/AAAA} query and {IPv4/IPv6} network types. This included grouping
-related hypotheses together and performing Sidak corrections to ensure that the
-confidence level achieved across the entire group (rather than for each
-individual hypothesis) was 95\%. Although this provides our results with
-credibility, our strict methods almost certainly assure false-negatives. In
-fact, this becomes apparent in our identification of {\tt A/AAAA}-resolvers in
-China. Our statistical methods identified only six resolvers with significant
-differences (\Cref{sec:resources}), however, the manual analysis performed in
-the case study (\Cref{sec:cases}) shows that a much larger number of resolvers
-performed censorship over a small set of just 21 domains. This is a fundamental
-limitation of any test of two proportions such as the $z$-test used in this
-work. 
+\para{Statistical limitations.} \dots
+% Throughout our study, we aimed to err on the side of caution in order to avoid
+% presenting false-positives in our results. Therefore, we relied on rigorous
+% statistical approaches in order to identify differences in censorship between
+% {\tt A/AAAA} query and {IPv4/IPv6} network types. This included grouping
+% related hypotheses together and performing Sidak corrections to ensure that the
+% confidence level achieved across the entire group (rather than for each
+% individual hypothesis) was 95\%. Although this provides our results with
+% credibility, our strict methods almost certainly assure false-negatives. In
+% fact, this becomes apparent in our identification of {\tt A/AAAA}-resolvers in
+% China. Our statistical methods identified only six resolvers with significant
+% differences (\Cref{sec:resources}), however, the manual analysis performed in
+% the case study (\Cref{sec:cases}) shows that a much larger number of resolvers
+% performed censorship over a small set of just 21 domains. This is a fundamental
+% limitation of any test of two proportions such as the $z$-test used in this
+% work. 
 
-%   Let's bring this up if they ask about it. From what I understand the stats
-%   people are in two camps. Some think this is ok and others will kill
-%   anything where the dist **might be** non-normal
-% We filter many countries out of our statistical analysis due to the low sample
-% size of available resolvers within the country. We choose specific bounds at
-% which to perform analysis using the $z$-test given that we cannot guarantee that
-% the resolver and domain entropy evaluation draws from a normal distribution.
-% With respect to available resolvers within a country we set the lower bound at
-% 25 available resolvers that pass our control tests. We believe that this
-% provides our statistical tests with appropriate power to draw significant
-% conclusions.
+% %   Let's bring this up if they ask about it. From what I understand the stats
+% %   people are in two camps. Some think this is ok and others will kill
+% %   anything where the dist **might be** non-normal
+% % We filter many countries out of our statistical analysis due to the low sample
+% % size of available resolvers within the country. We choose specific bounds at
+% % which to perform analysis using the $z$-test given that we cannot guarantee that
+% % the resolver and domain entropy evaluation draws from a normal distribution.
+% % With respect to available resolvers within a country we set the lower bound at
+% % 25 available resolvers that pass our control tests. We believe that this
+% % provides our statistical tests with appropriate power to draw significant
+% % conclusions.
+\subsection{Future Work} \label{sec:discussion:future}
 
-\para{Resolver selection.}
-Our work required us to identify resolvers that were IPv4 and IPv6 capable. For
-this, we only partially followed the steps outlined by Hendricks \etal
-(\cf \Cref{sec:methodology:resolvers}). We decided not to take explicit steps
-to guarantee that each resolver pair was in fact a single dual stack resolver.
-Doing so would have resulted in the complete removal of 6to4 bridges and
-infrastructure resolvers. Our reasoning was that such resolvers do play an
-important role in the censorship apparatus since they are the ones most
-commonly used by citizens in a censored region. Therefore, we decided that
-their removal would have harmed (1) the representativeness of our measurements
-and (2) the effectiveness of any circumvention approaches that might seek to
-exploit the censorship gaps identified in this work. On the other hand, this
-choice means that it is possible that our dataset may have multiple pairs of
-resolvers in a country that belong to the same resolving infrastructure. 
+\begin{itemize}
+	\item Keyword scanning in HTTP
+	\item checksum validity scanning
+	\item ECH / ESNI in TLS ClientHello
+\end{itemize}
 
-\parait{The presence of many 6to4 bridges.}
-One specific category of open resolver that we find to be relatively common in
-our collected data are those that rely on a {6to4 Bridge}. We find many
-countries where IPv6 resolver availability is supplemented with 6to4 and note
-that the filtering stage of our resolver methodology ensures that resolver IP
-pairs geolocate within the same country. This means that any IPv6 queries sent
-to 6to4 resolvers do traverse national networks as UDP over IPv6 for at least
-some potion of their path to the final resolver. Further, if our queries do not
-get served by the resolver's cache, it is expected that the recursive queries
-will still pass through the censor. Therefore, still providing standard
-censorship infrastructure some opportunities to censor.
-%
-Two specific examples of a substantial 6to4 supplement are Brazil in which 94
-of the 160 resolvers identified used 6to4 and Thailand with 112 out of 186
-resolvers. This understanding of the protocols that are traversing the censored
-links provide a limitation on our measurement in the sense that we do not get
-a perfect comparison of IPv4 with IPv6 that, however this trades-off with our
-ability to gain an interesting interesting perspective on the ability of
-censors to handle protocols specifically deployed to assist in bridging the
-IPv4 - IPv6 gap. For example in both Brazil and Thailand the resolvers relying
-on 6to4 censor requests at lower rates of injection for requests sent over IPv6
-on 6to4 as compared with Native IPv6. This suggests an opportunity of
-circumvention tool developers targeting citizens in these regions.
-
-% Do the non-6to4 resolvers in bangladesh and iran cluster by domain with the
-% IPv4 censoring resolvers?
-
-% \subsection{Future work and circumvention opportunities}
-\subsection{Circumvention Opportunities}
-\label{sec:discussion:future}
-Our work identifies many IPv6-related DNS censorship inconsistencies around the
-world. Each of these provides interesting directions for future work and
-opportunities for circumvention tool developers.
-%
-One particularly interesting direction concerns the discrepancy in the
-effectiveness of native IPv6 and 6to4-bridged IPv6 censorship. We find that
-there are several countries where 6to4 bridges experience significantly lower
-amounts of censorship --- including China and India. This presents the
-possibility of simply using 6to4 tunnels to circumvent DNS censorship. 
-%
-Further, 6to4 is not the only protocol that has seen deployment as part of an
-effort to bridge the gap between IPv4 and IPv6 deployment. The \texttt{6rd}
-protocol extends the subnet range of 6to4. The Teredo protocol uses UDP to
-encapsulate IP traffic. Finally, the ISATAP protocol provides an extended 6to4
-adding configuration using multicast and DNS. This strategy is not only
-applicable to DNS censorship circumvention as tunneling protocols can be used to
-encapsulate any next layer.
-%
-Our work also highlights the need for integration of IPv6-related measurements
-by longitudinal censorship measurement platforms such as Satellite, OONI, and
-ICLab. 
 
 \subsection{Conclusions} \label{sec:discussion:conclusions}
-
-The current state of global IPv6 DNS censorship does not divide into a binary
-bifurcation: block or allow, the landscape is nuanced and developing. However, we
-identify clear trends in IPv6 censorship that can help motivate future research
-and circumvention tool development.
-%
-In this work we present the first large scale measurement of DNS injection based
-censorship in IPv6 and provide a reproducible methodology for incorporating this
-measurement into longitudinal measurements going forward. We find significant
-evidence of DNS injection in IPv6 in many countries around the world. Despite
-this, we find that censoring countries still favor native network
-infrastructure, censoring \texttt{A} queries over IPv4 at the highest rates. At
-the country level
-we observe discrepencies that inform if censorship is centrally coordinated,
-or if there is looser coordination between
-%we use similarities and discrepancies in the censorship
-%behavior across resolvers and domains to identify censorship strategies and
-%infrastructure deployments. This allows us to demonstrate various countries
-%where censorship is likely centrally coordinated, as compared with countries
-%that demonstrate multiple clusters indicating looser coordination between the
-entities enacting the DNS censorship regimes.
-%
-The IP layer and the gap that exists between full IPv6 deployment and the
-current state of the Internet provide a telling lens for evaluating censorship
-and developing censorship circumvention technologies. IPv6 plays a growing role
-in global connectivity and, wherever possible, censorship measurements should
-endeavor to include IPv6 analysis to provide the most actionable understanding
-of global censorship infrastructure.
