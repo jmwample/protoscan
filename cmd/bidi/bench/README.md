@@ -12,12 +12,31 @@ initial keys, while http is created with a single format string operation.
 Along with this we are still using golang `net.Dial` for sending DNS packets
 (and raw sockets for all others) which has its own drawbacks.
 
-
 ## 1. How many packets can we send per second for each probe type?
+
+Answering this question effectively means answering the question **How many
+workers should we be using?**
+
+To answer this we use `run.sh` which sets all send delays to 0 and points the
+prober at a virtual interface, sending probes as fast as possible. We check the
+reported send rate for a variety of worker values.
+
 ![prelim benchmark results](./prober_benchmark_v0.1.png)
+
+It seems like 5-50 workers is the ideal window (need to confirm this). This
+could be caused by context switching and blocking for access to the raw socket
+file descriptor. Maybe once we have a certain number of threads the access slows
+down for all of them.
+
+## 2. Is the rate at which packets are sent relatively stable throughout?
+
+## 3. Send rates for the real measurements
+
+![send rates for CN IP, global domain scan](./aug-4_cn_global_send-rates_v0.1.png)
 
 
 TODO:
 
-- 0.2 Run will all (http, http-nsa, tls ,tls-nsa, quic, dns) probes
-  - run on server with no other processing load
+- v0.2 Run of Q1 will all (http, http-nsa, tls ,tls-nsa, quic, dns) probes
+  - run on server with no other processing load (i had a zoom call start during experiment)
+- v0.1 plot for Q2

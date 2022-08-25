@@ -226,13 +226,13 @@ func main() {
 		for {
 			time.Sleep(5 * time.Second)
 			epochDur := time.Since(epochStart).Milliseconds()
-			log.Printf("stats %d %d %d %d %d %d",
+			log.Printf("stats %d %d %d %d %f %f",
 				time.Since(start).Milliseconds(),
 				epochDur,
 				stats.pt,
 				stats.bt,
-				stats.ppe*1000/epochDur,
-				stats.bpe*1000/epochDur)
+				float64(stats.ppe)*1000/float64(epochDur),
+				float64(stats.bpe)*1000/float64(epochDur))
 
 			stats.epochReset()
 			epochStart = time.Now()

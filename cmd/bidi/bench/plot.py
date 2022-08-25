@@ -13,8 +13,8 @@ def main():
 
 	for path in glob.glob("out-*/**/*.out"):
 		s = path.split("/")
-		t = s[1]
-		w = int(s[0].split("-")[1])
+		w = int(s[1])
+		t = s[2]
 		if t not in  data:
 			data[t] = {}
 		data[t][w] = {}
@@ -24,7 +24,7 @@ def main():
 				if "stats " in line:
 					pps = line.split(" ")[-2]
 
-					ppsa.append(int(pps))
+					ppsa.append(float(pps))
 					data[t][w]["avg"] = np.mean(ppsa)
 					data[t][w]["std"] = np.std(ppsa)
 
@@ -40,9 +40,8 @@ def main():
 				type='data',
 				visible=True,
 				array=[y["std"] for y in data[tag].values()]
-				)
-
-			))
+			)
+		))
 		# plt.plot(data[tag].keys(), data[tag].values(), label = tag)
 
 	fig.update_xaxes(title_text='Number of Workers')
