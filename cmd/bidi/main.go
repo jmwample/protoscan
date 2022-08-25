@@ -221,23 +221,21 @@ func main() {
 	go p.handlePcap(*iface)
 
 	go func() {
-		if *verbose {
-			start := time.Now()
-			epochStart := time.Now()
-			for {
-				time.Sleep(5 * time.Second)
-				epochDur := time.Since(epochStart).Milliseconds()
-				log.Printf("stats %d %d %d %d %d %d",
-					time.Since(start).Milliseconds(),
-					epochDur,
-					stats.pt,
-					stats.bt,
-					stats.ppe*1000/epochDur,
-					stats.bpe*1000/epochDur)
+		start := time.Now()
+		epochStart := time.Now()
+		for {
+			time.Sleep(5 * time.Second)
+			epochDur := time.Since(epochStart).Milliseconds()
+			log.Printf("stats %d %d %d %d %d %d",
+				time.Since(start).Milliseconds(),
+				epochDur,
+				stats.pt,
+				stats.bt,
+				stats.ppe*1000/epochDur,
+				stats.bpe*1000/epochDur)
 
-				stats.epochReset()
-				epochStart = time.Now()
-			}
+			stats.epochReset()
+			epochStart = time.Now()
 		}
 	}()
 

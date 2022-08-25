@@ -3,7 +3,7 @@ module github.com/jmwample/protoscan
 go 1.18
 
 require (
-	github.com/google/gopacket v1.1.19
+	github.com/google/gopacket v1.1.20-0.20220810144506-32ee38206866
 	github.com/miekg/dns v1.1.50
 	github.com/oschwald/geoip2-golang v1.7.0
 	github.com/oschwald/maxminddb-golang v1.9.0

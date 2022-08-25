@@ -1,0 +1,9 @@
+
+
+.*.sw[po]
+*.[ao]
+
+out-*
+
+cmd/bidi/bidi
+cmd/bidi/bidi.test

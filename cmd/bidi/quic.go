@@ -69,8 +69,6 @@ func (p *quicProber) buildPayload(name string, target net.IP, sport int) ([]byte
 	clientID := (*[8]byte)(unsafe.Pointer(&cid))[:] // convert u64 to []byte
 	dstConnID := "08" + hex.EncodeToString(clientID)
 
-	log.Println("connid:", dstConnID)
-
 	// dynamic - source ID
 	buf := make([]byte, 5)
 	n, err := rand.Read(buf)
