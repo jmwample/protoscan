@@ -97,7 +97,7 @@ func main() {
 
 	nWorkers := flag.Uint("workers", 50, "Number worker threads")
 	wait := flag.Duration("wait", 5*time.Second, "Duration a worker waits after sending a probe")
-	verbose := flag.Bool("verbose", true, "Verbose prints sent/received DNS packets/info")
+	verbose := flag.Bool("verbose", false, "Verbose prints sent/received DNS packets/info")
 	domainf := flag.String("domains", "domains.txt", "File with a list of domains to test")
 	ipFName := flag.String("ips", "", "File with a list of target ip to test. Empty string reads from stdin")
 	iface := flag.String("iface", "eth0", "Interface to listen on")
@@ -201,7 +201,7 @@ func main() {
 		prober.outDir = *outDir
 		defer u.clean()
 	case *dnsProber:
-		u, err := newUDPSender(*iface, *lAddr4, *lAddr6, false, !*noChecksums)
+		u, err := newUDPSender(*iface, *lAddr4, *lAddr6, true, !*noChecksums)
 		if err != nil {
 			log.Fatal(err)
 		}
