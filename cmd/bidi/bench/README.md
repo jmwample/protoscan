@@ -28,15 +28,21 @@ could be caused by context switching and blocking for access to the raw socket
 file descriptor. Maybe once we have a certain number of threads the access slows
 down for all of them.
 
-## 2. Is the rate at which packets are sent relatively stable throughout?
+## 2. Send rates for the real measurements
 
-## 3. Send rates for the real measurements
+Global scan done on Aug 26th. 10 addresses per allocation for a total of 904640
+addresses. Each addresses sends probes for 1400 domains (including 3 controls).
+For a total of 1,266,496,000 per measurement (3,799,488,000 for the TCP probes
+sending SYN & ACK)
 
-![send rates for CN IP, global domain scan](./aug-4_cn_global_send-rates_v0.1.png)
+![send rates for CN IP, global domain scan](./aug-26_global_send-rates_v0.1.png)
 
+## 3. Is the rate at which packets are sent relatively stable throughout?
+
+In the global measurement completed on Aug 26th they look rather stable.
 
 TODO:
 
 - v0.2 Run of Q1 will all (http, http-nsa, tls ,tls-nsa, quic, dns) probes
   - run on server with no other processing load (i had a zoom call start during experiment)
-- v0.1 plot for Q2
+- v0.1 plot for Q3 based on simulation
