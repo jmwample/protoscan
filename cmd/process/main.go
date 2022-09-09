@@ -1,3 +1,10 @@
+/*
+Allows use of .pcap or .pcap.gz for input
+
+see:
+- https://github.com/google/gopacket/pull/214
+-
+*/
 package main
 
 import (
@@ -35,6 +42,26 @@ type Data struct {
 	PacketsByProbe map[string][]*PacketDetails
 }
 
+func (d *Data) PrintTTLs(exclude func(*PacketDetails) bool) {
+	for _, packet := range d.AllPackets {
+
+		if exclude != nil && exclude(packet) {
+			continue
+		}
+		fmt.Println(packet.IpTTL)
+	}
+}
+
+func (d *Data) PrintFlags(exclude func(*PacketDetails) bool) {
+	for _, packet := range d.AllPackets {
+
+		if exclude != nil && exclude(packet) {
+			continue
+		}
+		fmt.Printf("0x%02x\n", packet.TcpFlags)
+	}
+}
+
 func (d *Data) PrintStats() error {
 
 	// nprobes := make([]int, len(d.PacketsByProbe))
@@ -46,7 +73,7 @@ func (d *Data) PrintStats() error {
 		// }
 		// nprobes = append(nprobes, len(detailsArr))
 		total += float64(len(detailsArr))
-		ntot += 1
+		ntot++
 
 		fmt.Println(len(detailsArr))
 	}
@@ -55,18 +82,18 @@ func (d *Data) PrintStats() error {
 
 	// mean, err := f64d.Mean()
 	// if err != nil {
-	// 	panic(err)
+	// 	return err
 	// }
 	// std, err := f64d.StandardDeviation()
 	// if err != nil {
-	// 	panic(err)
+	// 	return err
 	// }
 	// var m1 float64 = total / ntot
 	// fmt.Printf("n: %d, %f, avg: %f, std: %f, avg1 %f\n", len(d.PacketsByProbe), ntot, mean, std, m1)
 
 	// b, err := json.Marshal(data.AllPackets)
 	// if err != nil {
-	// 	panic(err)
+	// 	return err
 	// }
 	// fmt.Println(string(b))
 
@@ -144,19 +171,39 @@ func main() {
 		panic("error reading pcap")
 	}
 
-	packetCount := 0
+	// packetCount := 0
 	packetSource := gopacket.NewPacketSource(r, r.LinkType()) // construct using pcap or pfring
 	for packet := range packetSource.Packets() {
 
 		handlePacket(data, packet)
-		packetCount += 1 // do something with each packet
+		// packetCount += 1 // do something with each packet
 		// if packetCount > 1000 {
 		// 	break
 		// }
 	}
 
-	err = data.PrintStats()
-	if err != nil {
-		panic(err)
-	}
+	// err = data.PrintStats()
+	// if err != nil {
+	// panic(err)
+	// }
+
+	data.PrintTTLs(selectSYNACK)
+
+	// data.PrintFlags(selectRSTACK)
+}
+
+func selectSYNACK(p *PacketDetails) bool {
+	return p.TcpFlags != 0x12
+}
+
+func selectRST(p *PacketDetails) bool {
+	return p.TcpFlags != 0x04
+}
+
+func selectRSTACK(p *PacketDetails) bool {
+	return p.TcpFlags != 0x14
+}
+
+func selectHTTP(p *PacketDetails) bool {
+	return !p.ContainsHTTP
 }
