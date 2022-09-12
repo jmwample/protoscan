@@ -189,8 +189,8 @@ func (p *quicProber) handlePcap(iface string) {
 
 		packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 		for packet := range packetSource.Packets() {
-			// p.handlePacket(packet)
 			w.WritePacket(packet.Metadata().CaptureInfo, packet.Data())
+			// p.handlePacket(packet)
 		}
 	}
 }
