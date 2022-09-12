@@ -100,7 +100,6 @@ func (p *dnsProber) handlePacket(packet gopacket.Packet) {
 		// could happen with ICMP packets. Ignore in processing.
 		return
 	}
-	udp, _ := udpLayer.(*layers.UDP)
 
 	dnsLayer := packet.Layer(layers.LayerTypeDNS)
 	if dnsLayer == nil {
@@ -126,6 +125,6 @@ func (p *dnsProber) handlePacket(packet gopacket.Packet) {
 		ip4, _ := ipLayer.(*layers.IPv4)
 		ipAddr = ip4.SrcIP
 	}
-	log.Printf("RESULT %s %s, %s %d answers: %s\n",
-		ipAddr, questions[0].Name, dns.ResponseCode, len(answers), hex.EncodeToString(udp.Payload))
+	log.Printf("RESULT %s %s, %s %d answers\n",
+		ipAddr, questions[0].Name, dns.ResponseCode, len(answers))
 }
