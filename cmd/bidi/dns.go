@@ -7,10 +7,13 @@ import (
 	"log"
 	"math/rand"
 	"net"
+	"os"
+	"path/filepath"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
+	"github.com/google/gopacket/pcapgo"
 	"github.com/miekg/dns"
 )
 
@@ -19,6 +22,8 @@ const dnsProbeTypeName = "dns"
 type dnsProber struct {
 	sender *udpSender
 	qType  uint
+
+	outDir string
 }
 
 func (p *dnsProber) registerFlags() {
@@ -70,14 +75,19 @@ func (p *dnsProber) buildPayload(name string) ([]byte, error) {
 }
 
 func (p *dnsProber) handlePcap(iface string) {
+	f, _ := os.Create(filepath.Join(p.outDir, "dns.pcap"))
+	w := pcapgo.NewWriter(f)
+	w.WriteFileHeader(1600, layers.LinkTypeEthernet)
+	defer f.Close()
 
 	if handle, err := pcap.OpenLive(iface, 1600, true, pcap.BlockForever); err != nil {
 		panic(err)
-	} else if err := handle.SetBPFFilter("udp src port 53"); err != nil { // optional
+	} else if err := handle.SetBPFFilter("icmp or udp src port 53"); err != nil { // optional
 		panic(err)
 	} else {
 		packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 		for packet := range packetSource.Packets() {
+			w.WritePacket(packet.Metadata().CaptureInfo, packet.Data())
 			p.handlePacket(packet)
 		}
 	}
@@ -87,6 +97,7 @@ func (p *dnsProber) handlePcap(iface string) {
 func (p *dnsProber) handlePacket(packet gopacket.Packet) {
 	udpLayer := packet.Layer(layers.LayerTypeUDP)
 	if udpLayer == nil {
+		// could happen with ICMP packets. Ignore in processing.
 		return
 	}
 	udp, _ := udpLayer.(*layers.UDP)

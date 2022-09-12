@@ -206,6 +206,7 @@ func main() {
 			log.Fatal(err)
 		}
 		prober.sender = u
+		prober.outDir = *outDir
 		defer u.clean()
 	}
 
