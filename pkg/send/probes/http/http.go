@@ -1,4 +1,4 @@
-package main
+package http
 
 import (
 	"fmt"
@@ -11,40 +11,43 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 	"github.com/google/gopacket/pcapgo"
+
+	"github.com/jmwample/protoscan/pkg/send/keys"
+	"github.com/jmwample/protoscan/pkg/send/senders/tcp"
 )
 
 // const httpUserAgent = "curl/7.81.0"
 const httpUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36"
-const httpProbeTypeName = "http"
+const ProbeTypeName = "http"
 const httpFmtStr = "GET / HTTP/1.1\r\nHost: %s\r\nUser-Agent: %s\r\nAccept: */*\r\n\r\n"
 
-type httpProber struct {
-	sender *tcpSender
+type Prober struct {
+	Sender *tcp.Sender
 
-	dkt *keyTable
+	Dkt *keys.KeyTable
 
-	outDir string
+	OutDir string
 }
 
-func (p *httpProber) registerFlags() {
+func (p *Prober) RegisterFlags() {
 }
 
-func (p *httpProber) buildPayload(name string) ([]byte, error) {
+func (p *Prober) BuildPayload(name string) ([]byte, error) {
 	// Fill out request bytes
 	return []byte(fmt.Sprintf(httpFmtStr, name, httpUserAgent)), nil
 
 }
 
-func (p *httpProber) sendProbe(ip net.IP, name string, verbose bool) error {
-	out, err := p.buildPayload(name)
+func (p *Prober) SendProbe(ip net.IP, name string, verbose bool) error {
+	out, err := p.BuildPayload(name)
 	if err != nil {
 		return fmt.Errorf("failed to build tls payload: %s", err)
 	}
 
-	sport, _ := p.dkt.get(name)
+	sport, _ := p.Dkt.Get(name)
 
 	addr := net.JoinHostPort(ip.String(), "80")
-	seqAck, sport, err := p.sender.sendTCP(addr, sport.(int), name, out, verbose)
+	seqAck, sport, err := p.Sender.Send(addr, sport.(int), name, out, verbose)
 	if err == nil && verbose {
 		log.Printf("Sent :%d -> %s %s %s\n", sport, addr, name, seqAck)
 	}
@@ -52,8 +55,8 @@ func (p *httpProber) sendProbe(ip net.IP, name string, verbose bool) error {
 	return err
 }
 
-func (p *httpProber) handlePcap(iface string) {
-	f, _ := os.Create(filepath.Join(p.outDir, "http.pcap"))
+func (p *Prober) HandlePcap(iface string) {
+	f, _ := os.Create(filepath.Join(p.OutDir, "http.pcap"))
 	w := pcapgo.NewWriter(f)
 	w.WriteFileHeader(1600, layers.LinkTypeEthernet)
 	defer f.Close()
@@ -73,7 +76,7 @@ func (p *httpProber) handlePcap(iface string) {
 	}
 }
 
-func (p *httpProber) handlePacket(packet gopacket.Packet) {
+func (p *Prober) handlePacket(packet gopacket.Packet) {
 
 	var ipAddr net.IP
 	ipLayer := packet.Layer(layers.LayerTypeIPv4)

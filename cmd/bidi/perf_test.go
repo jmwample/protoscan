@@ -5,18 +5,24 @@ import (
 	"net"
 	"testing"
 	"time"
+
+	"github.com/jmwample/protoscan/pkg/send/probes/dns"
+	"github.com/jmwample/protoscan/pkg/send/probes/http"
+	"github.com/jmwample/protoscan/pkg/send/probes/tls"
+	"github.com/jmwample/protoscan/pkg/send/senders/tcp"
+	// "github.com/jmwample/protoscan/pkg/send/probes/quic"
 )
 
 func Benchmark_GeneratePayloads(b *testing.B) {
-	pt := &tlsProber{}
-	ph := &httpProber{}
+	pt := &tls.Prober{}
+	ph := &http.Prober{}
 	// pq := &quicProber{}
-	pd := &dnsProber{}
+	pd := &dns.Prober{}
 	for n := 0; n < b.N; n++ {
-		pt.buildPayload("test.com")
-		ph.buildPayload("test.com")
-		// pq.buildPayload("test.com")
-		pd.buildPayload("test.com")
+		pt.BuildPayload("test.com")
+		ph.BuildPayload("test.com")
+		// pq.BuildPayload("test.com")
+		pd.BuildPayload("test.com")
 	}
 }
 
@@ -34,25 +40,25 @@ Takeaways:
   which blocks for randomness which we probably don't need
     - Fixed
 
-The calls to TLS / HTTP buildPayload are not what is causing the low pps output.
+The calls to TLS / HTTP BuildPayload are not what is causing the low pps output.
 */
 
 func Benchmark_SendProbes(b *testing.B) {
 	rand.Seed(int64(time.Now().Nanosecond()))
-	t, err := newTCPSender("wlo1", "", "", false, 0*time.Second, true)
+	t, err := tcp.NewSender("wlo1", "", "", false, 0*time.Second, true)
 	if err != nil {
 		panic(err)
 	}
-	pt := &tlsProber{
-		sender: t,
+	pt := &tls.Prober{
+		Sender: t,
 	}
-	pd := &dnsProber{}
+	pd := &dns.Prober{}
 	for n := 0; n < b.N; n++ {
-		err := pt.sendProbe(net.ParseIP("192.12.240.40"), "test.com", true)
+		err := pt.SendProbe(net.ParseIP("192.12.240.40"), "test.com", true)
 		if err != nil {
 			b.Log("tls", err)
 		}
-		err = pd.sendProbe(net.ParseIP("192.12.240.40"), "test.com", true)
+		err = pd.SendProbe(net.ParseIP("192.12.240.40"), "test.com", true)
 		if err != nil {
 			b.Log("dns", err)
 		}

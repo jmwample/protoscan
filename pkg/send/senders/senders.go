@@ -1,66 +1,29 @@
-package main
+package senders
 
 import (
-	"encoding/hex"
 	"fmt"
-	"math/rand"
 	"net"
-	"sync"
+	"os"
+	"syscall"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/routing"
 )
 
-var stats *sendStats = &sendStats{}
-
-type sendStats struct {
-	// packets per epoch
-	ppe int64
-	// bytes per epoch
-	bpe int64
-	// packets total
-	pt int64
-	// bytes total
-	bt int64
-
-	mu sync.Mutex
-}
-
-func (s *sendStats) incPacketPerSec() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.ppe++
-	s.pt++
-}
-
-func (s *sendStats) incBytesPerSec(n int) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.bpe += int64(n)
-	s.bt += int64(n)
-}
-
-func (s *sendStats) epochReset() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.bpe = 0
-	s.ppe = 0
-}
-
-func createDomainKeyTable(domains []string) (*keyTable, error) {
-	t := newKeyTable()
-	t.generate = func(s string) (interface{}, error) {
-		return int((rand.Int31() % 64535) + 1000), nil
+func SendPkt(sockFd int, payload []byte, addr syscall.Sockaddr) error {
+	err := syscall.Sendto(sockFd, payload, 0, addr)
+	if err != nil {
+		return os.NewSyscallError("sendto", err)
 	}
 
-	for _, d := range domains {
-		_, err := t.tryInsertGenerate(d)
-		if err != nil {
-			return nil, err
-		}
-	}
+	IncStats(len(payload))
 
-	return t, nil
+	return nil
+}
+
+func IncStats(bytes int) {
+	Stats.incPacketPerSec()
+	Stats.incBytesPerSec(bytes)
 }
 
 // getSrcIP allows us to check that there is a route to the dest with our
@@ -69,7 +32,7 @@ func createDomainKeyTable(domains []string) (*keyTable, error) {
 // target address by using the preferred source address provided by the call to
 // RouteWithSource. That way we don't have to support v4 and v6 local address
 // cli options. Also allows for empty or bad source from cli.
-func getSrcIP(localIface *net.Interface, lAddr string, dstIP net.IP) (net.IP, error) {
+func GetSrcIP(localIface *net.Interface, lAddr string, dstIP net.IP) (net.IP, error) {
 	var useV4 = dstIP.To4() != nil
 
 	var localIP = net.ParseIP(lAddr)
@@ -99,15 +62,7 @@ func getSrcIP(localIface *net.Interface, lAddr string, dstIP net.IP) (net.IP, er
 	return localIP, nil
 }
 
-func decodeOrPanic(s string) []byte {
-	b, err := hex.DecodeString(s)
-	if err != nil {
-		panic(err)
-	}
-	return b
-}
-
-type netLayer interface {
+type NetLayer interface {
 	gopacket.SerializableLayer
 	gopacket.NetworkLayer
 }

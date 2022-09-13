@@ -1,4 +1,4 @@
-package main
+package tcp
 
 import (
 	"fmt"
@@ -14,9 +14,10 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
+	"github.com/jmwample/protoscan/pkg/send/senders"
 )
 
-type tcpSender struct {
+type Sender struct {
 	src4 net.IP
 	src6 net.IP
 
@@ -33,22 +34,22 @@ type tcpSender struct {
 	sockFd6 int
 }
 
-// newTCPSender builds and inits new tcp sender. Gets source addresses
+// newSender builds and inits new tcp sender. Gets source addresses
 // for public v4 and v6 IPs (or uses locals if provided).
 //
 // Make sure to defer cleanup to // avoid leaving hanging sockets.
-func newTCPSender(device, lAddr4, lAddr6 string, synAck bool, synDelay time.Duration, checksums bool) (*tcpSender, error) {
+func NewSender(device, lAddr4, lAddr6 string, synAck bool, synDelay time.Duration, checksums bool) (*Sender, error) {
 	localIface, err := net.InterfaceByName(device)
 	if err != nil {
 		return nil, fmt.Errorf("bad device name: \"%s\"", device)
 	}
 
-	localIP4, err := getSrcIP(localIface, lAddr4, net.ParseIP("1.2.3.4"))
+	localIP4, err := senders.GetSrcIP(localIface, lAddr4, net.ParseIP("1.2.3.4"))
 	if err != nil {
 		return nil, err
 	}
 
-	localIP6, err := getSrcIP(localIface, lAddr6, net.ParseIP("2606:4700::"))
+	localIP6, err := senders.GetSrcIP(localIface, lAddr6, net.ParseIP("2606:4700::"))
 	if err != nil {
 		log.Println("failed to init IPv6 - likely not supported")
 	}
@@ -63,7 +64,7 @@ func newTCPSender(device, lAddr4, lAddr6 string, synAck bool, synDelay time.Dura
 		return nil, os.NewSyscallError("socket", err)
 	}
 
-	t := &tcpSender{
+	t := &Sender{
 		src4:   localIP4,
 		src6:   localIP6,
 		device: device,
@@ -80,12 +81,12 @@ func newTCPSender(device, lAddr4, lAddr6 string, synAck bool, synDelay time.Dura
 	return t, nil
 }
 
-func (t *tcpSender) clean() {
+func (t *Sender) Clean() {
 	syscall.Close(t.sockFd4)
 	syscall.Close(t.sockFd6)
 }
 
-func (t *tcpSender) sendTCP(dst string, sport int, domain string, payload []byte, verbose bool) (string, int, error) {
+func (t *Sender) Send(dst string, sport int, domain string, payload []byte, verbose bool) (string, int, error) {
 
 	host, portStr, err := net.SplitHostPort(dst)
 	if err != nil {
@@ -141,7 +142,7 @@ func (t *tcpSender) sendTCP(dst string, sport int, domain string, payload []byte
 	seqAck := fmt.Sprintf("%x %x", seq+1, ack)
 
 	// Fill out gopacket IP header with source and dest JUST for Data layer checksums
-	var networkLayer netLayer
+	var networkLayer senders.NetLayer
 	if useV4 {
 		ipLayer4 := &layers.IPv4{
 			SrcIP:    t.src4,
@@ -199,20 +200,20 @@ func (t *tcpSender) sendTCP(dst string, sport int, domain string, payload []byte
 	}
 
 	if t.sendSynAndAck {
-		err = sendPkt(sockFd, synBuf, addr)
+		err = senders.SendPkt(sockFd, synBuf, addr)
 		if err != nil {
 			return "", -1, err
 		}
 
 		time.Sleep(t.synDelay)
 
-		err = sendPkt(sockFd, ackBuf, addr)
+		err = senders.SendPkt(sockFd, ackBuf, addr)
 		if err != nil {
 			return "", -1, err
 		}
 	}
 
-	err = sendPkt(sockFd, tcpPayloadBuf.Bytes(), addr)
+	err = senders.SendPkt(sockFd, tcpPayloadBuf.Bytes(), addr)
 	if err != nil {
 		return "", -1, err
 	}
@@ -220,18 +221,7 @@ func (t *tcpSender) sendTCP(dst string, sport int, domain string, payload []byte
 	return seqAck, int(sport), nil
 }
 
-func sendPkt(sockFd int, payload []byte, addr syscall.Sockaddr) error {
-	err := syscall.Sendto(sockFd, payload, 0, addr)
-	if err != nil {
-		return os.NewSyscallError("sendto", err)
-	}
-	stats.incPacketPerSec()
-	stats.incBytesPerSec(len(payload))
-
-	return nil
-}
-
-func getSyn(srcPort, dstPort, seq uint32, options gopacket.SerializeOptions, ipLayer netLayer) ([]byte, error) {
+func getSyn(srcPort, dstPort, seq uint32, options gopacket.SerializeOptions, ipLayer senders.NetLayer) ([]byte, error) {
 	synLayer := layers.TCP{
 		SrcPort: layers.TCPPort(srcPort),
 		DstPort: layers.TCPPort(dstPort),
@@ -240,19 +230,19 @@ func getSyn(srcPort, dstPort, seq uint32, options gopacket.SerializeOptions, ipL
 		Seq:     seq,
 		Ack:     0,
 		Options: []layers.TCPOption{
-			layers.TCPOption{
+			{
 				OptionType:   layers.TCPOptionKindMSS,
 				OptionLength: 4,
 				OptionData:   []byte{0x05, 0xa0},
 			},
-			layers.TCPOption{
+			{
 				OptionType:   layers.TCPOptionKindSACKPermitted,
 				OptionLength: 2,
 			},
-			layers.TCPOption{
+			{
 				OptionType: layers.TCPOptionKindNop,
 			},
-			layers.TCPOption{
+			{
 				OptionType:   layers.TCPOptionKindWindowScale,
 				OptionLength: 3,
 				OptionData:   []byte{0x07},
@@ -269,7 +259,7 @@ func getSyn(srcPort, dstPort, seq uint32, options gopacket.SerializeOptions, ipL
 	}
 	return tcpPayloadBuf.Bytes(), nil
 }
-func getAck(srcPort, dstPort, seq, ack uint32, options gopacket.SerializeOptions, ipLayer netLayer) ([]byte, error) {
+func getAck(srcPort, dstPort, seq, ack uint32, options gopacket.SerializeOptions, ipLayer senders.NetLayer) ([]byte, error) {
 
 	ackLayer := &layers.TCP{
 		SrcPort: layers.TCPPort(srcPort),
@@ -279,10 +269,10 @@ func getAck(srcPort, dstPort, seq, ack uint32, options gopacket.SerializeOptions
 		Seq:     seq,
 		Ack:     ack,
 		Options: []layers.TCPOption{
-			layers.TCPOption{
+			{
 				OptionType: layers.TCPOptionKindNop,
 			},
-			layers.TCPOption{
+			{
 				OptionType: layers.TCPOptionKindNop,
 			},
 		},

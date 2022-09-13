@@ -7,3 +7,6 @@ out-*
 
 cmd/bidi/bidi
 cmd/bidi/bidi.test
+
+
+**/__pycache__

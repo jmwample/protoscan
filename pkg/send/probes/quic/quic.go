@@ -1,4 +1,4 @@
-package main
+package quic
 
 import (
 	"crypto/aes"
@@ -20,31 +20,34 @@ import (
 	"github.com/google/gopacket/pcapgo"
 	"golang.org/x/crypto/cryptobyte"
 	"golang.org/x/crypto/hkdf"
+
+	"github.com/jmwample/protoscan/pkg/send/keys"
+	"github.com/jmwample/protoscan/pkg/send/senders/udp"
 )
 
-const quicProbeTypeName = "quic"
+const ProbeTypeName = "quic"
 
-type quicProber struct {
-	sender *udpSender
+type Prober struct {
+	Sender *udp.Sender
 
-	dkt *keyTable
+	Dkt *keys.KeyTable
 
-	outDir string
+	OutDir string
 }
 
-func (p *quicProber) registerFlags() {
+func (p *Prober) RegisterFlags() {
 }
 
-func (p *quicProber) sendProbe(ip net.IP, name string, verbose bool) error {
-	sport, _ := p.dkt.get(name)
+func (p *Prober) SendProbe(ip net.IP, name string, verbose bool) error {
+	sport, _ := p.Dkt.Get(name)
 
-	out, clientID, err := p.buildPayload(name, ip, sport.(int))
+	out, clientID, err := p.BuildPayload(name, ip, sport.(int))
 	if err != nil {
 		return fmt.Errorf("failed to build quic payload: %s", err)
 	}
 
 	addr := net.JoinHostPort(ip.String(), "443")
-	sport, err = p.sender.sendUDP(addr, sport.(int), out, verbose)
+	sport, err = p.Sender.Send(addr, sport.(int), out, verbose)
 	if err == nil && verbose {
 		log.Printf("Sent :%s -> %s %s %s\n", sport, addr, name, clientID)
 	}
@@ -52,7 +55,7 @@ func (p *quicProber) sendProbe(ip net.IP, name string, verbose bool) error {
 	return err
 }
 
-func (p *quicProber) buildPayload(name string, target net.IP, sport int) ([]byte, string, error) {
+func (p *Prober) BuildPayload(name string, target net.IP, sport int) ([]byte, string, error) {
 	// var fullData = "cd0000000108000102030405060705635f636964004103981c36a7ed78716be9711ba498b7ed868443bb2e0c514d4d848eadcc7a00d25ce9f9afa483978088de836be68c0b32a24595d7813ea5414a9199329a6d9f7f760dd8bb249bf3f53d9a77fbb7b395b8d66d7879a51fe59ef9601f79998eb3568e1fdc789f640acab3858a82ef2930fa5ce14b5b9ea0bdb29f4572da85aa3def39b7efafffa074b9267070d50b5d07842e49bba3bc787ff295d6ae3b514305f102afe5a047b3fb4c99eb92a274d244d60492c0e2e6e212cef0f9e3f62efd0955e71c768aa6bb3cd80bbb3755c8b7ebee32712f40f2245119487021b4b84e1565e3ca31967ac8604d4032170dec280aeefa095d08b3b7241ef6646a6c86e5c62ce08be099"
 	headerByteAndVersion := "c000000001"
 
@@ -127,7 +130,7 @@ func (p *quicProber) buildPayload(name string, target net.IP, sport int) ([]byte
 	return out, hex.EncodeToString(clientID), err
 }
 
-func (p *quicProber) buildCryptoFramePaylaod(name string) ([]byte, error) {
+func (p *Prober) buildCryptoFramePaylaod(name string) ([]byte, error) {
 
 	// var fulldata = "060040ee010000f40303000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20e0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000813021303130100ff010000a30000001800160000136578616d706c652e756c666865696d2e6e6574000b000403000102000a00160014001d0017001e0019001801000101010201030104002300000016000000170000000d001e001c040305030603080708080809080a080b080408050806040105010601002b0003020304002d00020101003300260024001d0020358072d6365880d1aeea329adf9121383851ed21a28e3b75e965d0d2cd166254"
 
@@ -174,8 +177,8 @@ func (p *quicProber) buildCryptoFramePaylaod(name string) ([]byte, error) {
 	return hex.DecodeString(fulldata)
 }
 
-func (p *quicProber) handlePcap(iface string) {
-	f, _ := os.Create(filepath.Join(p.outDir, "quic.pcap"))
+func (p *Prober) HandlePcap(iface string) {
+	f, _ := os.Create(filepath.Join(p.OutDir, "quic.pcap"))
 	w := pcapgo.NewWriter(f)
 	w.WriteFileHeader(1600, layers.LinkTypeEthernet)
 	defer f.Close()
@@ -195,7 +198,7 @@ func (p *quicProber) handlePcap(iface string) {
 	}
 }
 
-func (p *quicProber) handlePacket(packet gopacket.Packet) {
+func (p *Prober) handlePacket(packet gopacket.Packet) {
 
 	var ipAddr net.IP
 	ipLayer := packet.Layer(layers.LayerTypeIPv4)

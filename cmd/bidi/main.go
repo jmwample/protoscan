@@ -10,14 +10,22 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/jmwample/protoscan/pkg/send/probes/dns"
+	"github.com/jmwample/protoscan/pkg/send/probes/http"
+	"github.com/jmwample/protoscan/pkg/send/probes/quic"
+	"github.com/jmwample/protoscan/pkg/send/probes/tls"
+	"github.com/jmwample/protoscan/pkg/send/senders"
+	"github.com/jmwample/protoscan/pkg/send/senders/tcp"
+	"github.com/jmwample/protoscan/pkg/send/senders/udp"
 )
 
 type prober interface {
-	registerFlags()
+	RegisterFlags()
 
-	sendProbe(ip net.IP, name string, verbose bool) error
+	SendProbe(ip net.IP, name string, verbose bool) error
 
-	handlePcap(iface string)
+	HandlePcap(iface string)
 }
 
 type job struct {
@@ -30,7 +38,7 @@ func worker(p prober, wait time.Duration, verbose bool, ips <-chan *job, wg *syn
 
 	for job := range ips {
 		addr := net.ParseIP(job.ip)
-		err := p.sendProbe(addr, job.domain, verbose)
+		err := p.SendProbe(addr, job.domain, verbose)
 		if err != nil {
 			log.Printf("Result %s,%s - error: %v\n", job.ip, job.domain, err)
 			continue
@@ -89,10 +97,10 @@ func getIPs(fPath string) ([]string, error) {
 func main() {
 
 	var probers = map[string]prober{
-		dnsProbeTypeName:  &dnsProber{},
-		httpProbeTypeName: &httpProber{},
-		tlsProbeTypeName:  &tlsProber{},
-		quicProbeTypeName: &quicProber{},
+		dns.ProbeTypeName:  &dns.Prober{},
+		http.ProbeTypeName: &http.Prober{},
+		tls.ProbeTypeName:  &tls.Prober{},
+		quic.ProbeTypeName: &quic.Prober{},
 	}
 
 	nWorkers := flag.Uint("workers", 50, "Number worker threads")
@@ -111,7 +119,7 @@ func main() {
 	outDir := flag.String("d", "out/", "output directory for log files")
 
 	for _, p := range probers {
-		p.registerFlags()
+		p.RegisterFlags()
 	}
 
 	flag.Parse()
@@ -166,48 +174,48 @@ func main() {
 			log.Fatalf("error opening dkt file: %v", err)
 		}
 		defer dktFile.Close()
-		err = dkt.marshal(dktFile)
+		err = dkt.Marshal(dktFile)
 		if err != nil {
 			log.Fatalf("error writing domain key table: %v", err)
 		}
 	}()
 
 	switch prober := p.(type) {
-	case *httpProber:
-		t, err := newTCPSender(*iface, *lAddr4, *lAddr6, !*noSynAck, *synDelay, !*noChecksums)
+	case *http.Prober:
+		t, err := tcp.NewSender(*iface, *lAddr4, *lAddr6, !*noSynAck, *synDelay, !*noChecksums)
 		if err != nil {
 			log.Fatal(err)
 		}
-		prober.sender = t
-		prober.dkt = dkt
-		prober.outDir = *outDir
-		defer t.clean()
-	case *tlsProber:
-		t, err := newTCPSender(*iface, *lAddr4, *lAddr6, !*noSynAck, *synDelay, !*noChecksums)
+		prober.Sender = t
+		prober.Dkt = dkt
+		prober.OutDir = *outDir
+		defer t.Clean()
+	case *tls.Prober:
+		t, err := tcp.NewSender(*iface, *lAddr4, *lAddr6, !*noSynAck, *synDelay, !*noChecksums)
 		if err != nil {
 			log.Fatal(err)
 		}
-		prober.sender = t
-		prober.dkt = dkt
-		prober.outDir = *outDir
-		defer t.clean()
-	case *quicProber:
-		u, err := newUDPSender(*iface, *lAddr4, *lAddr6, true, !*noChecksums)
+		prober.Sender = t
+		prober.Dkt = dkt
+		prober.OutDir = *outDir
+		defer t.Clean()
+	case *quic.Prober:
+		u, err := udp.NewSender(*iface, *lAddr4, *lAddr6, true, !*noChecksums)
 		if err != nil {
 			log.Fatal(err)
 		}
-		prober.sender = u
-		prober.dkt = dkt
-		prober.outDir = *outDir
-		defer u.clean()
-	case *dnsProber:
-		u, err := newUDPSender(*iface, *lAddr4, *lAddr6, true, !*noChecksums)
+		prober.Sender = u
+		prober.Dkt = dkt
+		prober.OutDir = *outDir
+		defer u.Clean()
+	case *dns.Prober:
+		u, err := udp.NewSender(*iface, *lAddr4, *lAddr6, true, !*noChecksums)
 		if err != nil {
 			log.Fatal(err)
 		}
-		prober.sender = u
-		prober.outDir = *outDir
-		defer u.clean()
+		prober.Sender = u
+		prober.OutDir = *outDir
+		defer u.Clean()
 	}
 
 	jobs := make(chan *job, *nWorkers*10)
@@ -219,7 +227,7 @@ func main() {
 		go worker(p, *wait, *verbose, jobs, &wg)
 	}
 
-	go p.handlePcap(*iface)
+	go p.HandlePcap(*iface)
 
 	go func() {
 		start := time.Now()
@@ -227,15 +235,10 @@ func main() {
 		for {
 			time.Sleep(5 * time.Second)
 			epochDur := time.Since(epochStart).Milliseconds()
-			log.Printf("stats %d %d %d %d %f %f",
-				time.Since(start).Milliseconds(),
+			log.Printf("stats %d %d %s ", time.Since(start).Milliseconds(),
 				epochDur,
-				stats.pt,
-				stats.bt,
-				float64(stats.ppe)*1000/float64(epochDur),
-				float64(stats.bpe)*1000/float64(epochDur))
-
-			stats.epochReset()
+				senders.Stats.GetEpochStats(epochDur))
+			senders.Stats.EpochReset()
 			epochStart = time.Now()
 		}
 	}()
@@ -251,6 +254,6 @@ func main() {
 
 	wg.Wait()
 
-	// sleep for 15 seconds while handlePcap still runs in case of delayed responses
+	// sleep for 15 seconds while HandlePcap still runs in case of delayed responses
 	// time.Sleep(15 * time.Second)
 }

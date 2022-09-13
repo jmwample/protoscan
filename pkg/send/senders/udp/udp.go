@@ -1,4 +1,4 @@
-package main
+package udp
 
 import (
 	"fmt"
@@ -11,9 +11,10 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
+	"github.com/jmwample/protoscan/pkg/send/senders"
 )
 
-type udpSender struct {
+type Sender struct {
 	lAddr4, lAddr6 string
 
 	//--- Raw send options ---
@@ -28,18 +29,18 @@ type udpSender struct {
 	sockFd6 int
 }
 
-func newUDPSender(device, lAddr4, lAddr6 string, sendRaw, checksums bool) (*udpSender, error) {
+func NewSender(device, lAddr4, lAddr6 string, sendRaw, checksums bool) (*Sender, error) {
 	localIface, err := net.InterfaceByName(device)
 	if err != nil {
 		return nil, fmt.Errorf("bad device name: \"%s\"", device)
 	}
 
-	localIP4, err := getSrcIP(localIface, lAddr4, net.ParseIP("1.2.3.4"))
+	localIP4, err := senders.GetSrcIP(localIface, lAddr4, net.ParseIP("1.2.3.4"))
 	if err != nil {
 		return nil, err
 	}
 
-	localIP6, err := getSrcIP(localIface, lAddr6, net.ParseIP("2606:4700::"))
+	localIP6, err := senders.GetSrcIP(localIface, lAddr6, net.ParseIP("2606:4700::"))
 	if err != nil {
 		log.Println("failed to init IPv6 - likely not supported")
 	}
@@ -54,9 +55,9 @@ func newUDPSender(device, lAddr4, lAddr6 string, sendRaw, checksums bool) (*udpS
 		return nil, os.NewSyscallError("socket", err)
 	}
 
-	var u *udpSender
+	var u *Sender
 	if sendRaw {
-		u = &udpSender{
+		u = &Sender{
 			lAddr4: localIP4.String(),
 			lAddr6: localIP6.String(),
 
@@ -71,7 +72,7 @@ func newUDPSender(device, lAddr4, lAddr6 string, sendRaw, checksums bool) (*udpS
 			sockFd6: fd6,
 		}
 	} else {
-		u = &udpSender{
+		u = &Sender{
 			lAddr4:  localIP4.String(),
 			lAddr6:  localIP6.String(),
 			sendRaw: sendRaw,
@@ -81,7 +82,7 @@ func newUDPSender(device, lAddr4, lAddr6 string, sendRaw, checksums bool) (*udpS
 	return u, nil
 }
 
-func (u *udpSender) clean() {
+func (u *Sender) Clean() {
 	if u.sendRaw {
 		// if were sending using raw sockets close those sockets
 		syscall.Close(u.sockFd4)
@@ -89,9 +90,8 @@ func (u *udpSender) clean() {
 	}
 }
 
-//
 // if sport is 0 (unset) then the Dial should generate a random source port.
-func (u *udpSender) sendUDP(dst string, sport int, payload []byte, verbose bool) (string, error) {
+func (u *Sender) Send(dst string, sport int, payload []byte, verbose bool) (string, error) {
 
 	if u.sendRaw {
 		return u.sendUDPRaw(dst, sport, payload, verbose)
@@ -130,8 +130,8 @@ func (u *udpSender) sendUDP(dst string, sport int, payload []byte, verbose bool)
 	if err != nil {
 		return "", err
 	}
-	stats.incPacketPerSec()
-	stats.incBytesPerSec(n)
+
+	senders.IncStats(n)
 
 	h := conn.LocalAddr().String()
 	_, p, err := net.SplitHostPort(h)
@@ -139,7 +139,7 @@ func (u *udpSender) sendUDP(dst string, sport int, payload []byte, verbose bool)
 	return p, err
 }
 
-func (u *udpSender) sendUDPRaw(dst string, sport int, payload []byte, verbose bool) (string, error) {
+func (u *Sender) sendUDPRaw(dst string, sport int, payload []byte, verbose bool) (string, error) {
 	host, portStr, err := net.SplitHostPort(dst)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse \"ip:port\": %s - %s", dst, err)
@@ -173,7 +173,7 @@ func (u *udpSender) sendUDPRaw(dst string, sport int, payload []byte, verbose bo
 	}
 
 	// Fill out gopacket IP header with source and dest JUST for Data layer checksums
-	var networkLayer netLayer
+	var networkLayer senders.NetLayer
 	if useV4 {
 		ipLayer4 := &layers.IPv4{
 			SrcIP:    u.src4,
@@ -220,7 +220,7 @@ func (u *udpSender) sendUDPRaw(dst string, sport int, payload []byte, verbose bo
 		}
 	}
 
-	err = sendPkt(sockFd, udpPayloadBuf.Bytes(), addr)
+	err = senders.SendPkt(sockFd, udpPayloadBuf.Bytes(), addr)
 	if err != nil {
 		return "", err
 	}

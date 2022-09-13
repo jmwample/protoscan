@@ -1,4 +1,4 @@
-package main
+package keys
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 	"sync"
 )
 
-// keyTable is intended to be used as a way to map elements sent in outgoing
+// KeyTable is intended to be used as a way to map elements sent in outgoing
 // probes to features that will be returned in response packets.
 //
 // For example. The TLS probe sends a domain in the SNI field, but responses
@@ -16,20 +16,20 @@ import (
 // port.
 //
 // We want:
-//  - to do forward and reverse lookups so that it is easy (no loops) to lookup
-//	  for example the domain given the port (i.e. when we receive a reset), or
-//	  the port given the domain (i.e. when we are crafting the packet).
-//  - to make sure there are no collisions. No duplicate ports, no duplicate
-//    domains.
-//  - to access this structure using many goroutines in parallel without race
-//	  condition issues.
-//  - to be able to dump this structure into logs if necessary
+//   - to do forward and reverse lookups so that it is easy (no loops) to lookup
+//     for example the domain given the port (i.e. when we receive a reset), or
+//     the port given the domain (i.e. when we are crafting the packet).
+//   - to make sure there are no collisions. No duplicate ports, no duplicate
+//     domains.
+//   - to access this structure using many goroutines in parallel without race
+//     condition issues.
+//   - to be able to dump this structure into logs if necessary
 //
 // Note - because we use maps the value types must be hashable - i.e. no []byte
-type keyTable struct {
+type KeyTable struct {
 	m sync.Mutex
 
-	generate func(string) (interface{}, error)
+	Generate func(string) (interface{}, error)
 
 	// forward
 	F map[string]interface{} `json:"fwd"`
@@ -37,8 +37,8 @@ type keyTable struct {
 	R map[interface{}]string `json:"rev"`
 }
 
-func newKeyTable() *keyTable {
-	t := &keyTable{
+func NewKeyTable() *KeyTable {
+	t := &KeyTable{
 		F: make(map[string]interface{}),
 		R: make(map[interface{}]string),
 	}
@@ -46,7 +46,7 @@ func newKeyTable() *keyTable {
 	return t
 }
 
-func (t *keyTable) get(key string) (interface{}, bool) {
+func (t *KeyTable) Get(key string) (interface{}, bool) {
 	t.m.Lock()
 	defer t.m.Unlock()
 
@@ -54,7 +54,7 @@ func (t *keyTable) get(key string) (interface{}, bool) {
 	return s, ok
 }
 
-func (t *keyTable) getKey(v interface{}) (string, bool) {
+func (t *KeyTable) GetKey(v interface{}) (string, bool) {
 	t.m.Lock()
 	defer t.m.Unlock()
 
@@ -62,7 +62,7 @@ func (t *keyTable) getKey(v interface{}) (string, bool) {
 	return k, ok
 }
 
-func (t *keyTable) insert(key string, v interface{}) {
+func (t *KeyTable) Insert(key string, v interface{}) {
 	t.m.Lock()
 	defer t.m.Unlock()
 
@@ -70,7 +70,7 @@ func (t *keyTable) insert(key string, v interface{}) {
 	t.R[v] = key
 }
 
-func (t *keyTable) tryInsertGenerate(key string) (v interface{}, err error) {
+func (t *KeyTable) TryInsertGenerate(key string) (v interface{}, err error) {
 	t.m.Lock()
 	defer t.m.Unlock()
 
@@ -79,14 +79,14 @@ func (t *keyTable) tryInsertGenerate(key string) (v interface{}, err error) {
 		return v, nil
 	}
 
-	if t.generate == nil {
+	if t.Generate == nil {
 		return nil, fmt.Errorf("no generate function provided")
 	}
 
 	// Generate a new unused value for the string value
 	ok := true
 	for {
-		v, err = t.generate(key)
+		v, err = t.Generate(key)
 		if err != nil {
 			return nil, err
 		}
@@ -103,9 +103,9 @@ func (t *keyTable) tryInsertGenerate(key string) (v interface{}, err error) {
 	return
 }
 
-// Marshal and json.Marshal(*keyTable) only work for objects that can be
+// Marshal and json.Marshal(*KeyTable) only work for objects that can be
 // converted to int because that is all I need for now.
-func (t *keyTable) marshal(w io.Writer) error {
+func (t *KeyTable) Marshal(w io.Writer) error {
 	b, err := json.Marshal(t)
 	if err != nil {
 		return err
@@ -115,7 +115,7 @@ func (t *keyTable) marshal(w io.Writer) error {
 	return err
 }
 
-func (t *keyTable) MarshalJSON() ([]byte, error) {
+func (t *KeyTable) MarshalJSON() ([]byte, error) {
 	m := struct {
 		F map[string]int
 		R map[int]string

@@ -1,4 +1,4 @@
-package main
+package dns
 
 import (
 	"encoding/hex"
@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/jmwample/protoscan/pkg/send/senders/udp"
+
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
@@ -17,28 +19,28 @@ import (
 	"github.com/miekg/dns"
 )
 
-const dnsProbeTypeName = "dns"
+const ProbeTypeName = "dns"
 
-type dnsProber struct {
-	sender *udpSender
-	qType  uint
+type Prober struct {
+	Sender *udp.Sender
+	QType  uint
 
-	outDir string
+	OutDir string
 }
 
-func (p *dnsProber) registerFlags() {
-	flag.UintVar(&p.qType, "qtype", 1, "[DNS] Type of Query to send (1 = A / 28 = AAAA)")
+func (p *Prober) RegisterFlags() {
+	flag.UintVar(&p.QType, "qtype", 1, "[DNS] Type of Query to send (1 = A / 28 = AAAA)")
 }
 
-func (p *dnsProber) sendProbe(ip net.IP, name string, verbose bool) error {
+func (p *Prober) SendProbe(ip net.IP, name string, verbose bool) error {
 
-	out, err := p.buildPayload(name)
+	out, err := p.BuildPayload(name)
 	if err != nil {
 		return fmt.Errorf("failed to build udp payload: %s", err)
 	}
 
 	addr := net.JoinHostPort(ip.String(), "53")
-	sport, err := p.sender.sendUDP(addr, 0, out, verbose)
+	sport, err := p.Sender.Send(addr, 0, out, verbose)
 	if err == nil && verbose {
 		log.Printf("Sent :%s -> %s %s %s\n", sport, addr, name, hex.EncodeToString(out))
 	}
@@ -46,7 +48,7 @@ func (p *dnsProber) sendProbe(ip net.IP, name string, verbose bool) error {
 	return err
 }
 
-func (p *dnsProber) buildPayload(name string) ([]byte, error) {
+func (p *Prober) BuildPayload(name string) ([]byte, error) {
 	m := &dns.Msg{
 		MsgHdr: dns.MsgHdr{
 			Authoritative:     false,
@@ -59,7 +61,7 @@ func (p *dnsProber) buildPayload(name string) ([]byte, error) {
 	}
 	m.Question[0] = dns.Question{
 		Name:   dns.Fqdn(name),
-		Qtype:  uint16(p.qType),
+		Qtype:  uint16(p.QType),
 		Qclass: uint16(0x0001), // IN
 	}
 
@@ -74,8 +76,8 @@ func (p *dnsProber) buildPayload(name string) ([]byte, error) {
 	return out, nil
 }
 
-func (p *dnsProber) handlePcap(iface string) {
-	f, _ := os.Create(filepath.Join(p.outDir, "dns.pcap"))
+func (p *Prober) HandlePcap(iface string) {
+	f, _ := os.Create(filepath.Join(p.OutDir, "dns.pcap"))
 	w := pcapgo.NewWriter(f)
 	w.WriteFileHeader(1600, layers.LinkTypeEthernet)
 	defer f.Close()
@@ -94,7 +96,7 @@ func (p *dnsProber) handlePcap(iface string) {
 
 }
 
-func (p *dnsProber) handlePacket(packet gopacket.Packet) {
+func (p *Prober) handlePacket(packet gopacket.Packet) {
 	udpLayer := packet.Layer(layers.LayerTypeUDP)
 	if udpLayer == nil {
 		// could happen with ICMP packets. Ignore in processing.

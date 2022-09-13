@@ -1,4 +1,4 @@
-package main
+package keys
 
 import (
 	"bytes"
@@ -14,42 +14,42 @@ var keyLen = 8
 func TestKeyTable(t *testing.T) {
 	rand.Seed(1234)
 
-	tr := newKeyTable()
-	tr.generate = func(s string) (interface{}, error) {
+	tr := NewKeyTable()
+	tr.Generate = func(s string) (interface{}, error) {
 		return rand.Int63(), nil
 	}
 
 	val := rand.Int63()
 
 	// values get inserted.
-	tr.insert("abc", val)
+	tr.Insert("abc", val)
 	require.Equal(t, 1, len(tr.F))
 	require.Equal(t, 1, len(tr.R))
 
 	// inserted value is accessible by key
-	v, ok := tr.get("abc")
+	v, ok := tr.Get("abc")
 	require.True(t, ok)
 	require.Equal(t, val, v.(int64))
 
 	// inserted key is accessible by value
-	k, ok := tr.getKey(val)
+	k, ok := tr.GetKey(val)
 	require.True(t, ok)
 	require.Equal(t, "abc", k)
 
 	// unknown key returns not ok
-	v, ok = tr.get("xyz")
+	v, ok = tr.Get("xyz")
 	require.False(t, ok)
 	require.Nil(t, v)
 
 	// unknown value returns not ok
 	expected := rand.Int63()
-	k, ok = tr.getKey(expected)
+	k, ok = tr.GetKey(expected)
 	require.False(t, ok)
 	require.Equal(t, "", k)
 
 	// test tryInsertGenerate with guaranteed collision by re-seeding
 	rand.Seed(1234)
-	v, err := tr.tryInsertGenerate("def")
+	v, err := tr.TryInsertGenerate("def")
 	newVal := v.(int64)
 	require.Nil(t, err)
 	require.NotEqual(t, "", newVal)
@@ -60,7 +60,7 @@ func TestKeyTable(t *testing.T) {
 
 	// test that calling tryInsertGenerate on an existing value returns the
 	// existing key and does not update the maps
-	v, err = tr.tryInsertGenerate("def")
+	v, err = tr.TryInsertGenerate("def")
 	newVal = v.(int64)
 	require.Nil(t, err)
 	require.Equal(t, expected, newVal)
@@ -70,8 +70,8 @@ func TestKeyTable(t *testing.T) {
 
 // run with `-race` option to make sure that none of these operations
 func TestKeyTableRace(t *testing.T) {
-	tr := newKeyTable()
-	tr.generate = func(s string) (interface{}, error) {
+	tr := NewKeyTable()
+	tr.Generate = func(s string) (interface{}, error) {
 		return rand.Int63(), nil
 	}
 
@@ -84,17 +84,17 @@ func TestKeyTableRace(t *testing.T) {
 			rand.Seed(1234)
 			for j := 0; j < maxInsert; j++ {
 				key := fmt.Sprintf("%d", j*k)
-				v, _ := tr.tryInsertGenerate(key)
+				v, _ := tr.TryInsertGenerate(key)
 
-				tr.get(key)
-				tr.getKey(v)
+				tr.Get(key)
+				tr.GetKey(v)
 
 				val := rand.Int63()
 				key = fmt.Sprintf("%d", j*k+1)
-				tr.insert(key, val)
+				tr.Insert(key, val)
 
-				tr.get(key)
-				tr.getKey(val)
+				tr.Get(key)
+				tr.GetKey(val)
 			}
 		}()
 	}
@@ -102,15 +102,15 @@ func TestKeyTableRace(t *testing.T) {
 
 // TODO: problem for future jmwample
 func TestKeyTableDump(t *testing.T) {
-	tr := newKeyTable()
-	tr.generate = func(s string) (interface{}, error) {
+	tr := NewKeyTable()
+	tr.Generate = func(s string) (interface{}, error) {
 		return rand.Int63(), nil
 	}
-	tr.insert("a", 1)
-	tr.insert("b", 2)
+	tr.Insert("a", 1)
+	tr.Insert("b", 2)
 
 	var buf bytes.Buffer
-	err := tr.marshal(&buf)
+	err := tr.Marshal(&buf)
 	require.Nil(t, err)
 	t.Logf("%s", buf.String())
 }

@@ -1,4 +1,4 @@
-package main
+package tls
 
 import (
 	"encoding/hex"
@@ -13,32 +13,34 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 	"github.com/google/gopacket/pcapgo"
+	"github.com/jmwample/protoscan/pkg/send/keys"
+	"github.com/jmwample/protoscan/pkg/send/senders/tcp"
 )
 
-const tlsProbeTypeName = "tls"
+const ProbeTypeName = "tls"
 
-type tlsProber struct {
-	sender *tcpSender
+type Prober struct {
+	Sender *tcp.Sender
 
-	dkt *keyTable
+	Dkt *keys.KeyTable
 
-	outDir string
+	OutDir string
 }
 
-func (p *tlsProber) registerFlags() {
+func (p *Prober) RegisterFlags() {
 }
 
-func (p *tlsProber) sendProbe(ip net.IP, name string, verbose bool) error {
+func (p *Prober) SendProbe(ip net.IP, name string, verbose bool) error {
 
-	out, err := p.buildPayload(name)
+	out, err := p.BuildPayload(name)
 	if err != nil {
 		return fmt.Errorf("failed to build tls payload: %s", err)
 	}
 
-	sport, _ := p.dkt.get(name)
+	sport, _ := p.Dkt.Get(name)
 
 	addr := net.JoinHostPort(ip.String(), "443")
-	seqAck, sport, err := p.sender.sendTCP(addr, sport.(int), name, out, verbose)
+	seqAck, sport, err := p.Sender.Send(addr, sport.(int), name, out, verbose)
 	if err == nil && verbose {
 		log.Printf("Sent :%d -> %s %s %s\n", sport, addr, name, seqAck)
 	}
@@ -46,7 +48,7 @@ func (p *tlsProber) sendProbe(ip net.IP, name string, verbose bool) error {
 	return err
 }
 
-// buildPayload builds a tls paylaod
+// BuildPayload builds a tls paylaod
 //
 // As demonstrated by the GeneratePaylaods perf benchmark lots (~30%) of tls
 // payload build time is spent on hex.Decode which is avoidable. However, for
@@ -54,12 +56,12 @@ func (p *tlsProber) sendProbe(ip net.IP, name string, verbose bool) error {
 // in which to interact with the payload. It might make sense to do hex.Decode
 // calls as some sort of init if speed matters in the future. Or move to using
 // slice init with bytes. But for now it doesn't matter.
-func (p *tlsProber) buildPayload(name string) ([]byte, error) {
+func (p *Prober) BuildPayload(name string) ([]byte, error) {
 	return buildTLS1_2(name)
 }
 
-func (p *tlsProber) handlePcap(iface string) {
-	f, _ := os.Create(filepath.Join(p.outDir, "tls.pcap"))
+func (p *Prober) HandlePcap(iface string) {
+	f, _ := os.Create(filepath.Join(p.OutDir, "tls.pcap"))
 	w := pcapgo.NewWriter(f)
 	w.WriteFileHeader(1600, layers.LinkTypeEthernet)
 	defer f.Close()
@@ -79,7 +81,7 @@ func (p *tlsProber) handlePcap(iface string) {
 	}
 }
 
-func (p *tlsProber) handlePacket(packet gopacket.Packet) {
+func (p *Prober) handlePacket(packet gopacket.Packet) {
 
 	var ipAddr net.IP
 	ipLayer := packet.Layer(layers.LayerTypeIPv4)
