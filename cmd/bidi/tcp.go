@@ -221,14 +221,22 @@ func (t *tcpSender) sendTCP(dst string, sport int, domain string, payload []byte
 }
 
 func sendPkt(sockFd int, payload []byte, addr syscall.Sockaddr) error {
-	err := syscall.Sendto(sockFd, payload, 0, addr)
-	if err != nil {
-		return os.NewSyscallError("sendto", err)
+	var err error
+	retries := 3
+	retryDelay := 1 * time.Millisecond
+	for i := 0; i < retries; i++ {
+		err = syscall.Sendto(sockFd, payload, 0, addr)
+		if err == nil {
+			stats.incPacketPerSec()
+			stats.incBytesPerSec(len(payload))
+			return nil
+		}
+		if err != nil {
+			time.Sleep(retryDelay)
+		}
 	}
-	stats.incPacketPerSec()
-	stats.incBytesPerSec(len(payload))
 
-	return nil
+	return os.NewSyscallError("sendto", err)
 }
 
 func getSyn(srcPort, dstPort, seq uint32, options gopacket.SerializeOptions, ipLayer netLayer) ([]byte, error) {

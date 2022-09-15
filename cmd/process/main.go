@@ -19,6 +19,8 @@ import (
 )
 
 type PacketDetails struct {
+	IPv4           bool
+	IPv6           bool
 	TcpFlags       byte
 	IpTTL          uint8
 	ContainsHTTP   bool
@@ -42,21 +44,27 @@ type Data struct {
 	PacketsByProbe map[string][]*PacketDetails
 }
 
-func (d *Data) PrintTTLs(exclude func(*PacketDetails) bool) {
+func (d *Data) PrintTTLs(exclude func(*PacketDetails) *PacketDetails) {
 	for _, packet := range d.AllPackets {
 
-		if exclude != nil && exclude(packet) {
-			continue
+		if exclude != nil {
+			packet = exclude(packet)
+			if packet == nil {
+				continue
+			}
 		}
 		fmt.Println(packet.IpTTL)
 	}
 }
 
-func (d *Data) PrintFlags(exclude func(*PacketDetails) bool) {
+func (d *Data) PrintFlags(exclude func(*PacketDetails) *PacketDetails) {
 	for _, packet := range d.AllPackets {
 
-		if exclude != nil && exclude(packet) {
-			continue
+		if exclude != nil {
+			packet = exclude(packet)
+			if packet == nil {
+				continue
+			}
 		}
 		fmt.Printf("0x%02x\n", packet.TcpFlags)
 	}
@@ -110,11 +118,15 @@ func handlePacket(d *Data, packet gopacket.Packet) {
 		p.Target = ip.SrcIP.String()
 		details.IpTTL = ip.TTL
 		details.TcpFlags = ip.Payload[13] & 0x3F
+		details.IPv4 = true
+		details.IPv6 = false
 	} else if ipLayer := packet.Layer(layers.LayerTypeIPv6); ipLayer != nil {
 		ip, _ := ipLayer.(*layers.IPv6)
 		p.Target = ip.SrcIP.String()
 		details.IpTTL = ip.HopLimit
 		details.TcpFlags = ip.Payload[13] & 0x3F
+		details.IPv4 = false
+		details.IPv6 = true
 	} else {
 		return
 	}
@@ -187,23 +199,69 @@ func main() {
 	// panic(err)
 	// }
 
-	data.PrintTTLs(selectSYNACK)
+	filters := []func(*PacketDetails) *PacketDetails{selectIPv4, selectHTTP}
+	data.PrintTTLs(cf(filters))
 
 	// data.PrintFlags(selectRSTACK)
 }
 
-func selectSYNACK(p *PacketDetails) bool {
-	return p.TcpFlags != 0x12
+// composeFilters
+func cf(fs []func(*PacketDetails) *PacketDetails) func(*PacketDetails) *PacketDetails {
+
+	defaultF := func(pd *PacketDetails) *PacketDetails {
+		return pd
+	}
+
+	if len(fs) == 0 {
+		return defaultF
+	}
+
+	return func(pd *PacketDetails) *PacketDetails {
+		for _, f := range fs {
+			pd = f(pd)
+		}
+		return pd
+	}
 }
 
-func selectRST(p *PacketDetails) bool {
-	return p.TcpFlags != 0x04
+func selectSYNACK(p *PacketDetails) *PacketDetails {
+	if p == nil || p.TcpFlags != 0x12 {
+		return nil
+	}
+	return p
 }
 
-func selectRSTACK(p *PacketDetails) bool {
-	return p.TcpFlags != 0x14
+func selectRST(p *PacketDetails) *PacketDetails {
+	if p == nil || p.TcpFlags != 0x04 {
+		return nil
+	}
+	return p
 }
 
-func selectHTTP(p *PacketDetails) bool {
-	return !p.ContainsHTTP
+func selectRSTACK(p *PacketDetails) *PacketDetails {
+	if p == nil || p.TcpFlags != 0x14 {
+		return nil
+	}
+	return p
+}
+
+func selectHTTP(p *PacketDetails) *PacketDetails {
+	if p == nil || !p.ContainsHTTP {
+		return nil
+	}
+	return p
+}
+
+func selectIPv6(p *PacketDetails) *PacketDetails {
+	if p == nil || !p.IPv6 {
+		return nil
+	}
+	return p
+}
+
+func selectIPv4(p *PacketDetails) *PacketDetails {
+	if p == nil || !p.IPv4 {
+		return nil
+	}
+	return p
 }
