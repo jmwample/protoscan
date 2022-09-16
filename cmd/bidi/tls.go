@@ -46,9 +46,9 @@ func (p *tlsProber) sendProbe(ip net.IP, name string, verbose bool) error {
 	return err
 }
 
-// buildPayload builds a tls paylaod
+// buildPayload builds a tls payload
 //
-// As demonstrated by the GeneratePaylaods perf benchmark lots (~30%) of tls
+// As demonstrated by the GeneratePayloads perf benchmark lots (~30%) of tls
 // payload build time is spent on hex.Decode which is avoidable. However, for
 // now generating payload is really fast anyways and hex is a convenient format
 // in which to interact with the payload. It might make sense to do hex.Decode

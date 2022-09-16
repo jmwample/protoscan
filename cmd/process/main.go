@@ -18,6 +18,7 @@ import (
 	"github.com/google/gopacket/pcapgo"
 )
 
+
 type PacketDetails struct {
 	IPv4           bool
 	IPv6           bool
@@ -44,7 +45,7 @@ type Data struct {
 	PacketsByProbe map[string][]*PacketDetails
 }
 
-func (d *Data) PrintTTLs(exclude func(*PacketDetails) *PacketDetails) {
+func (d *Data) PrintTTLs(exclude packetFilter) {
 	for _, packet := range d.AllPackets {
 
 		if exclude != nil {
@@ -57,7 +58,7 @@ func (d *Data) PrintTTLs(exclude func(*PacketDetails) *PacketDetails) {
 	}
 }
 
-func (d *Data) PrintFlags(exclude func(*PacketDetails) *PacketDetails) {
+func (d *Data) PrintFlags(exclude packetFilter) {
 	for _, packet := range d.AllPackets {
 
 		if exclude != nil {
@@ -199,69 +200,8 @@ func main() {
 	// panic(err)
 	// }
 
-	filters := []func(*PacketDetails) *PacketDetails{selectIPv4, selectHTTP}
+	filters := []packetFilter{selectIPv4, selectHTTP}
 	data.PrintTTLs(cf(filters))
 
 	// data.PrintFlags(selectRSTACK)
-}
-
-// composeFilters
-func cf(fs []func(*PacketDetails) *PacketDetails) func(*PacketDetails) *PacketDetails {
-
-	defaultF := func(pd *PacketDetails) *PacketDetails {
-		return pd
-	}
-
-	if len(fs) == 0 {
-		return defaultF
-	}
-
-	return func(pd *PacketDetails) *PacketDetails {
-		for _, f := range fs {
-			pd = f(pd)
-		}
-		return pd
-	}
-}
-
-func selectSYNACK(p *PacketDetails) *PacketDetails {
-	if p == nil || p.TcpFlags != 0x12 {
-		return nil
-	}
-	return p
-}
-
-func selectRST(p *PacketDetails) *PacketDetails {
-	if p == nil || p.TcpFlags != 0x04 {
-		return nil
-	}
-	return p
-}
-
-func selectRSTACK(p *PacketDetails) *PacketDetails {
-	if p == nil || p.TcpFlags != 0x14 {
-		return nil
-	}
-	return p
-}
-
-func selectHTTP(p *PacketDetails) *PacketDetails {
-	if p == nil || !p.ContainsHTTP {
-		return nil
-	}
-	return p
-}
-
-func selectIPv6(p *PacketDetails) *PacketDetails {
-	if p == nil || !p.IPv6 {
-		return nil
-	}
-	return p
-}
-
-func selectIPv4(p *PacketDetails) *PacketDetails {
-	if p == nil || !p.IPv4 {
-		return nil
-	}
-	return p
 }
