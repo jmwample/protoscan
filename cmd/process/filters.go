@@ -62,3 +62,12 @@ func selectIPv4(p *PacketDetails) *PacketDetails {
 	}
 	return p
 }
+
+func newSelectIPID(id uint16) packetFilter {
+	return func(p *PacketDetails) *PacketDetails {
+		if p == nil || p.IpID != id {
+			return nil
+		}
+		return p
+	}
+}

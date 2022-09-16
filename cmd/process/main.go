@@ -10,6 +10,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -18,12 +19,12 @@ import (
 	"github.com/google/gopacket/pcapgo"
 )
 
-
 type PacketDetails struct {
 	IPv4           bool
 	IPv6           bool
-	TcpFlags       byte
+	TcpFlags       uint8
 	IpTTL          uint8
+	IpID           uint16
 	ContainsHTTP   bool
 	TlsServerHello bool
 	TlsAlert       bool
@@ -45,7 +46,8 @@ type Data struct {
 	PacketsByProbe map[string][]*PacketDetails
 }
 
-func (d *Data) PrintTTLs(exclude packetFilter) {
+func (d *Data) getU8F(f u8f, exclude packetFilter) []uint8 {
+	r := make([]uint8, 0, 10)
 	for _, packet := range d.AllPackets {
 
 		if exclude != nil {
@@ -54,20 +56,49 @@ func (d *Data) PrintTTLs(exclude packetFilter) {
 				continue
 			}
 		}
-		fmt.Println(packet.IpTTL)
+		r = append(r, f(packet))
+	}
+	return r
+}
+
+func (d *Data) printU8F(f u8f, exclude packetFilter) {
+	fs := d.getU8F(f, exclude)
+	for _, f := range fs {
+		fmt.Println(f)
 	}
 }
 
-func (d *Data) PrintFlags(exclude packetFilter) {
-	for _, packet := range d.AllPackets {
+func (d *Data) printU8FCounts(f u8f, exclude packetFilter) {
+	fs := d.getU8F(f, exclude)
+	fCounts := uniqueCountsU8(fs)
 
-		if exclude != nil {
-			packet = exclude(packet)
-			if packet == nil {
-				continue
-			}
-		}
-		fmt.Printf("0x%02x\n", packet.TcpFlags)
+	keys := make([]uint8, 0, len(fCounts))
+	for k := range fCounts {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+
+	for _, k := range keys {
+		fmt.Println(k, fCounts[k])
+	}
+}
+
+func (d *Data) getTTLs(exclude packetFilter) []uint8 {
+	return d.getU8F(u8fTTL, exclude)
+}
+
+func (d *Data) printTTLs(exclude packetFilter) {
+	d.printU8F(u8fTTL, exclude)
+}
+
+func (d *Data) printTTLCounts(exclude packetFilter) {
+	d.printU8FCounts(u8fTTL, exclude)
+}
+
+func (d *Data) printFlags(exclude packetFilter) {
+	flags := d.getU8F(u8fFlags, exclude)
+	for _, f := range flags {
+		fmt.Printf("0x%02x\n", f)
 	}
 }
 
@@ -118,6 +149,7 @@ func handlePacket(d *Data, packet gopacket.Packet) {
 		ip, _ := ipLayer.(*layers.IPv4)
 		p.Target = ip.SrcIP.String()
 		details.IpTTL = ip.TTL
+		details.IpID = ip.Id
 		details.TcpFlags = ip.Payload[13] & 0x3F
 		details.IPv4 = true
 		details.IPv6 = false
@@ -125,6 +157,7 @@ func handlePacket(d *Data, packet gopacket.Packet) {
 		ip, _ := ipLayer.(*layers.IPv6)
 		p.Target = ip.SrcIP.String()
 		details.IpTTL = ip.HopLimit
+		details.IpID = 0
 		details.TcpFlags = ip.Payload[13] & 0x3F
 		details.IPv4 = false
 		details.IPv6 = true
@@ -156,11 +189,9 @@ func handlePacket(d *Data, packet gopacket.Packet) {
 	d.PacketsByProbe[ps] = append(d.PacketsByProbe[ps], details)
 }
 
-var data *Data
-
 func main() {
 
-	data = &Data{
+	data := &Data{
 		NonZeroPackets: make([]*PacketDetails, 0),
 		AllPackets:     make([]*PacketDetails, 0),
 		PacketsByProbe: make(map[string][]*PacketDetails),
@@ -200,8 +231,11 @@ func main() {
 	// panic(err)
 	// }
 
-	filters := []packetFilter{selectIPv4, selectHTTP}
-	data.PrintTTLs(cf(filters))
+	filters := []packetFilter{selectIPv4, selectSYNACK}
+	data.printU8FCounts(u8fIPIDUpper, cf(filters))
 
-	// data.PrintFlags(selectRSTACK)
+	// filters := []packetFilter{selectIPv4, newSelectIPID(0)}
+	// data.printU8FCounts(u8fFlags, cf(filters))
+
+	// data.printFlags(cf(filters))
 }
