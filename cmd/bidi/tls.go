@@ -205,7 +205,16 @@ func buildTLS1_3(name string) ([]byte, error) {
 	var hostnameLen = fmt.Sprintf("%04x", len(name))
 	var hostname = hex.EncodeToString([]byte(name))
 
-	var otherExtensions = "000b000403000102000a00160014001d0017001e0019001801000101010201030104002300000016000000170000000d001e001c040305030603080708080809080a080b080408050806040105010601002b0003020304002d00020101003300260024001d0020358072d6365880d1aeea329adf9121383851ed21a28e3b75e965d0d2cd166254"
+	// dynamic(random) - Client KeyShare extension public key
+	buf = make([]byte, 32)
+	n, err = rand.Read(buf)
+	if err != nil || n != 32 {
+		return nil, fmt.Errorf("failed rand read: %s", err)
+	}
+	var extKeySharePubkey = hex.EncodeToString(buf)
+	var extKeyShare = "003300260024001d0020" + extKeySharePubkey
+
+	var otherExtensions = extKeyShare + "000b000403000102000a00160014001d0017001e0019001801000101010201030104002300000016000000170000000d001e001c040305030603080708080809080a080b080408050806040105010601002b0003020304002d00020101"
 
 	fulldata := rh + packetLen + hh + clientRandom + sessionID + csAndCM + extensionsLen + extSNIID + extSNIDataLen + extSNIEntryLen + extSNIEntryType + hostnameLen + hostname + otherExtensions
 	return hex.DecodeString(fulldata)
