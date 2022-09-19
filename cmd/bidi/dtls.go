@@ -55,7 +55,7 @@ func (p *dtlsProber) sendProbe(ip net.IP, name string, verbose bool) error {
 }
 
 func (p *dtlsProber) buildPayload(name string) ([]byte, error) {
-	return nil, fmt.Errorf("not implemented yet")
+	return buildDTLS1_3(name)
 }
 
 func (p *dtlsProber) handlePcap(iface string) {
@@ -108,4 +108,8 @@ func (p *dtlsProber) handlePacket(packet gopacket.Packet) {
 	} else {
 		log.Printf("RESULT DTLS")
 	}
+}
+
+func buildDTLS1_3(name string) ([]byte, error) {
+	return hex.DecodeString("16fefd0000000000000000009d010000910000000000000091fefde0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff0000000613011302130301000061003300260024001d0020358072d6365880d1aeea329adf9121383851ed21a28e3b75e965d0d2cd166254002b000302fefc000d0020001e06030503040302030806080b0805080a080408090601050104010301020100160000000a00040002001d")
 }

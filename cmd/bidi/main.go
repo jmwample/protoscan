@@ -93,6 +93,7 @@ func main() {
 		httpProbeTypeName: &httpProber{},
 		tlsProbeTypeName:  &tlsProber{},
 		quicProbeTypeName: &quicProber{},
+		dtlsProbeTypeName: &dtlsProber{},
 	}
 
 	nWorkers := flag.Uint("workers", 50, "Number worker threads")
@@ -201,6 +202,14 @@ func main() {
 		prober.outDir = *outDir
 		defer u.clean()
 	case *dnsProber:
+		u, err := newUDPSender(*iface, *lAddr4, *lAddr6, true, !*noChecksums)
+		if err != nil {
+			log.Fatal(err)
+		}
+		prober.sender = u
+		prober.outDir = *outDir
+		defer u.clean()
+	case *dtlsProber:
 		u, err := newUDPSender(*iface, *lAddr4, *lAddr6, true, !*noChecksums)
 		if err != nil {
 			log.Fatal(err)
