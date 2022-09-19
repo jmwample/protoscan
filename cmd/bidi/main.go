@@ -105,7 +105,7 @@ func main() {
 	lAddr4 := flag.String("laddr", "", "Local address to send packets from - unset uses default interface")
 	lAddr6 := flag.String("laddr6", "", "Local address to send packets from - unset uses default interface")
 	proberType := flag.String("type", "dns", "probe type to send")
-	seed := flag.Int64("seed", -1, "[HTTP/TLS/QUIC] seed for random elements of generated packets. default seeded with time.Now.Nano")
+	seed := flag.Int64("seed", -1, "[HTTP/TLS/QUIC/DTLS] seed for random elements of generated packets. default seeded with time.Now.Nano")
 	noSynAck := flag.Bool("nsa", false, "[HTTP/TLS] No Syn Ack (nsa) disable syn, and ack warm up packets for tcp probes")
 	synDelay := flag.Duration("syn-delay", 2*time.Millisecond, "[HTTP/TLS] when syn ack is enabled delay between syn and data")
 	noChecksums := flag.Bool("no-checksums", false, "[HTTP/TLS] fix checksums on injected packets for TCP protocols")
@@ -216,6 +216,17 @@ func main() {
 		}
 		prober.sender = u
 		prober.outDir = *outDir
+
+		if prober.randDestinationPort {
+			min, max, err := parseRandRange(prober.portRangeString)
+			if err != nil {
+				log.Fatal(err)
+			}
+			prober.randPortRange = portRange{
+				min, max,
+			}
+
+		}
 		defer u.clean()
 	}
 
