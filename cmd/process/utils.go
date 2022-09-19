@@ -1,5 +1,30 @@
 package main
 
+import (
+	"encoding/json"
+	"io/ioutil"
+)
+
+// KeyTable stores domain to port mappings
+type KeyTable struct {
+
+	// forward
+	F map[string]uint16
+	// reverse
+	R map[uint16]string
+}
+
+func parseDKT(path string) (*KeyTable, error) {
+	content, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var dkt KeyTable
+	err = json.Unmarshal(content, &dkt)
+	return &dkt, nil
+}
+
 type u8f func(*PacketDetails) uint8
 type u16f func(*PacketDetails) uint16
 

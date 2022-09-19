@@ -20,7 +20,7 @@ const tlsProbeTypeName = "tls"
 type tlsProber struct {
 	sender *tcpSender
 
-	dkt *keyTable
+	dkt *KeyTable
 
 	outDir string
 }

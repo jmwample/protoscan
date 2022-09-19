@@ -8,10 +8,10 @@ see:
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/google/gopacket"
@@ -19,6 +19,13 @@ import (
 	"github.com/google/gopacket/pcapgo"
 )
 
+var controlDomains = []string{
+	"v4vsv6.com",
+	"test1.v4vsv6.com",
+	"test2.v4vsv6.com",
+}
+
+// PacketDetails stores details from individual packets
 type PacketDetails struct {
 	IPv4           bool
 	IPv6           bool
@@ -31,24 +38,30 @@ type PacketDetails struct {
 	TcpPayloadLen  int
 }
 
+// Probe stores info about a single probe target
 type Probe struct {
 	Target string
 	Domain string
 }
 
 func (p *Probe) String() string {
-	return fmt.Sprintf("%s:%s", p.Target, p.Domain)
+	return fmt.Sprintf("%s@%s", p.Target, p.Domain)
 }
 
+// Data tracks all data about received packets
 type Data struct {
-	NonZeroPackets []*PacketDetails
-	AllPackets     []*PacketDetails
-	PacketsByProbe map[string][]*PacketDetails
+	NonZeroPackets        []*PacketDetails
+	AllPackets            []*PacketDetails
+	PacketsByProbe        map[string][]*PacketDetails
+	ControlPackets        []*PacketDetails
+	ControlPacketsByProbe map[string][]*PacketDetails
+	UnknownPackets        []*PacketDetails
+	UnknownPacketsByProbe map[string][]*PacketDetails
 }
 
-func (d *Data) getU8F(f u8f, exclude packetFilter) []uint8 {
+func getU8F(packets []*PacketDetails, f u8f, exclude packetFilter) []uint8 {
 	r := make([]uint8, 0, 10)
-	for _, packet := range d.AllPackets {
+	for _, packet := range packets {
 
 		if exclude != nil {
 			packet = exclude(packet)
@@ -61,15 +74,15 @@ func (d *Data) getU8F(f u8f, exclude packetFilter) []uint8 {
 	return r
 }
 
-func (d *Data) printU8F(f u8f, exclude packetFilter) {
-	fs := d.getU8F(f, exclude)
+func printU8F(packets []*PacketDetails, f u8f, exclude packetFilter) {
+	fs := getU8F(packets, f, exclude)
 	for _, f := range fs {
 		fmt.Println(f)
 	}
 }
 
-func (d *Data) printU8FCounts(f u8f, exclude packetFilter) {
-	fs := d.getU8F(f, exclude)
+func printU8FCounts(packets []*PacketDetails, f u8f, exclude packetFilter) {
+	fs := getU8F(packets, f, exclude)
 	fCounts := uniqueCountsU8(fs)
 
 	keys := make([]uint8, 0, len(fCounts))
@@ -83,26 +96,26 @@ func (d *Data) printU8FCounts(f u8f, exclude packetFilter) {
 	}
 }
 
-func (d *Data) getTTLs(exclude packetFilter) []uint8 {
-	return d.getU8F(u8fTTL, exclude)
+func (d *Data) getTTLs(packets []*PacketDetails, exclude packetFilter) []uint8 {
+	return getU8F(packets, u8fTTL, exclude)
 }
 
-func (d *Data) printTTLs(exclude packetFilter) {
-	d.printU8F(u8fTTL, exclude)
+func (d *Data) printTTLs(packets []*PacketDetails, exclude packetFilter) {
+	printU8F(packets, u8fTTL, exclude)
 }
 
-func (d *Data) printTTLCounts(exclude packetFilter) {
-	d.printU8FCounts(u8fTTL, exclude)
+func (d *Data) printTTLCounts(packets []*PacketDetails, exclude packetFilter) {
+	printU8FCounts(packets, u8fTTL, exclude)
 }
 
-func (d *Data) printFlags(exclude packetFilter) {
-	flags := d.getU8F(u8fFlags, exclude)
+func (d *Data) printFlags(packets []*PacketDetails, exclude packetFilter) {
+	flags := getU8F(packets, u8fFlags, exclude)
 	for _, f := range flags {
 		fmt.Printf("0x%02x\n", f)
 	}
 }
 
-func (d *Data) PrintStats() error {
+func (d *Data) printStats() error {
 
 	// nprobes := make([]int, len(d.PacketsByProbe))
 	var total float64 = 0
@@ -140,7 +153,7 @@ func (d *Data) PrintStats() error {
 	return nil
 }
 
-func handlePacket(d *Data, packet gopacket.Packet) {
+func handlePacket(d *Data, dkt *KeyTable, packet gopacket.Packet) {
 
 	p := &Probe{}
 	details := &PacketDetails{}
@@ -167,7 +180,12 @@ func handlePacket(d *Data, packet gopacket.Packet) {
 
 	if tcpLayer := packet.Layer(layers.LayerTypeTCP); tcpLayer != nil {
 		tcp, _ := tcpLayer.(*layers.TCP)
-		p.Domain = strconv.Itoa(int(tcp.DstPort))
+
+		if d, ok := dkt.R[uint16(tcp.DstPort)]; ok {
+			p.Domain = d
+		} else {
+			p.Domain = "UNKNOWN"
+		}
 
 		details.TcpPayloadLen = len(tcp.Payload)
 		if details.TcpPayloadLen > 3 {
@@ -179,10 +197,30 @@ func handlePacket(d *Data, packet gopacket.Packet) {
 	}
 
 	// fmt.Printf("%s:%s\n", p.Target, p.Domain)
-
-	d.AllPackets = append(d.AllPackets, details)
-
 	ps := p.String()
+
+	if p.Domain == "UNKNOWN" {
+		d.UnknownPackets = append(d.UnknownPackets, details)
+		if d.UnknownPacketsByProbe[ps] == nil {
+			d.UnknownPacketsByProbe[ps] = []*PacketDetails{}
+		}
+		d.UnknownPacketsByProbe[ps] = append(d.UnknownPacketsByProbe[ps], details)
+	} else {
+		d.AllPackets = append(d.AllPackets, details)
+	}
+
+	for _, cd := range controlDomains {
+		if p.Domain == cd {
+			d.ControlPackets = append(d.ControlPackets, details)
+
+			if d.ControlPacketsByProbe[ps] == nil {
+				d.ControlPacketsByProbe[ps] = []*PacketDetails{}
+			}
+			d.ControlPacketsByProbe[ps] = append(d.ControlPacketsByProbe[ps], details)
+			break
+		}
+	}
+
 	if d.PacketsByProbe[ps] == nil {
 		d.PacketsByProbe[ps] = []*PacketDetails{}
 	}
@@ -192,25 +230,38 @@ func handlePacket(d *Data, packet gopacket.Packet) {
 func main() {
 
 	data := &Data{
-		NonZeroPackets: make([]*PacketDetails, 0),
-		AllPackets:     make([]*PacketDetails, 0),
-		PacketsByProbe: make(map[string][]*PacketDetails),
+		NonZeroPackets:        make([]*PacketDetails, 0),
+		AllPackets:            make([]*PacketDetails, 0),
+		ControlPackets:        make([]*PacketDetails, 0),
+		UnknownPackets:        make([]*PacketDetails, 0),
+		PacketsByProbe:        make(map[string][]*PacketDetails),
+		ControlPacketsByProbe: make(map[string][]*PacketDetails),
+		UnknownPacketsByProbe: make(map[string][]*PacketDetails),
 	}
 
-	var pcapPath string
-	if len(os.Args[1:]) > 0 {
+	var pcapPath, dktPath string
+	if len(os.Args[1:]) > 1 {
 		pcapPath = os.Args[1]
+		dktPath = os.Args[2]
 	} else {
-		panic("no file provided")
+		panic("not enough file paths provided")
+	}
+
+	dkt, err := parseDKT(dktPath)
+	if err != nil {
+		panic(err)
 	}
 
 	f, err := os.Open(pcapPath)
+
 	if err != nil {
 		panic("could not open file")
 	}
+
 	defer f.Close()
 
 	r, err := pcapgo.NewReader(f)
+
 	if err != nil {
 		panic("error reading pcap")
 	}
@@ -219,7 +270,7 @@ func main() {
 	packetSource := gopacket.NewPacketSource(r, r.LinkType()) // construct using pcap or pfring
 	for packet := range packetSource.Packets() {
 
-		handlePacket(data, packet)
+		handlePacket(data, dkt, packet)
 		// packetCount += 1 // do something with each packet
 		// if packetCount > 1000 {
 		// 	break
@@ -231,8 +282,22 @@ func main() {
 	// panic(err)
 	// }
 
-	filters := []packetFilter{selectIPv4, selectSYNACK}
-	data.printU8FCounts(u8fIPIDUpper, cf(filters))
+	// filters := []packetFilter{selectIPv4, selectSYNACK}
+	// printU8FCounts(data.ControlPackets, u8fFlags, nil)
+	// printU8FCounts(data.ControlPacke9ts, u8fIPIDUpper, cf(filters))
+
+	// s, err := json.Marshal(data.ControlPacketsByProbe)
+	// for k, v := range data.UnknownPacketsByProbe {
+	for k, v := range data.ControlPacketsByProbe {
+		fmt.Println(k, len(v))
+		for _, pd := range v {
+			s, err := json.Marshal(pd)
+			if err != nil {
+				continue
+			}
+			fmt.Println("\t", string(s))
+		}
+	}
 
 	// filters := []packetFilter{selectIPv4, newSelectIPID(0)}
 	// data.printU8FCounts(u8fFlags, cf(filters))
