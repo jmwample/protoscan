@@ -92,7 +92,8 @@ func main() {
 		dnsProbeTypeName:  &dnsProber{},
 		httpProbeTypeName: &httpProber{},
 		tlsProbeTypeName:  &tlsProber{},
-		echProbeTypeName:  &echProber{},
+		esniProbeTypeName: &echProber{esni: true, send1_3: true},
+		echProbeTypeName:  &echProber{ech: true, send1_3: true},
 		quicProbeTypeName: &quicProber{},
 		dtlsProbeTypeName: &dtlsProber{},
 	}

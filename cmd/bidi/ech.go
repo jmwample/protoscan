@@ -2,7 +2,10 @@ package main
 
 // ESNI based on pcap parsable by wireshark
 //
-// ECH based on sftcd/openssl implementation (https://github.com/sftcd/openssl/blob/ECH-draft-13c/esnistuff/building-curl-openssl-with-ech.md) and draft RFC 13
+// ECH based on sftcd/openssl implementation
+// (https://github.com/sftcd/openssl/blob/ECH-draft-13c/esnistuff/building-curl-openssl-with-ech.md)
+// and draft RFC 13. Works for Draft 14 as well as ClientHello Extension did not
+// materially change between the proposals.
 
 import (
 	"encoding/hex"
@@ -20,11 +23,17 @@ import (
 )
 
 const echProbeTypeName = "ech"
+const esniProbeTypeName = "esni"
 
 type echProber struct {
 	sender *tcpSender
 
 	dkt *KeyTable
+
+	esni bool
+	ech  bool
+
+	send1_3 bool
 
 	outDir string
 }
@@ -59,7 +68,14 @@ func (p *echProber) sendProbe(ip net.IP, name string, verbose bool) error {
 // calls as some sort of init if speed matters in the future. Or move to using
 // slice init with bytes. But for now it doesn't matter.
 func (p *echProber) buildPayload(name string) ([]byte, error) {
-	return buildECH1_3(name, true, false)
+	if p.send1_3 {
+		return buildECH1_3(name, p.ech, p.esni)
+	}
+
+	if p.esni || p.ech {
+		return nil, fmt.Errorf("tls 1.2 not supported for ech/esni")
+	}
+	return buildECH1_2(name)
 }
 
 func (p *echProber) handlePcap(iface string) {
@@ -183,8 +199,10 @@ func buildECH1_3(name string, ech, esni bool) ([]byte, error) {
 	var extESNI = ""
 	var extECH = ""
 	if esni {
+		recordLen := rand.Intn(320-100+1) + 100
+
 		// dynamic(random) - Encrypted Client Hello extension
-		var extESNIHeader = "ffce016e1301001d0020"
+		var extESNIHeader = "ffce" + fmt.Sprintf("%04x", recordLen+0x4a) + "1301001d0020"
 		buf := make([]byte, 32)
 		n, err := rand.Read(buf)
 		if err != nil || n != 32 {
@@ -197,13 +215,13 @@ func buildECH1_3(name string, ech, esni bool) ([]byte, error) {
 			return nil, fmt.Errorf("failed rand read: %s", err)
 		}
 		var extESNIDigest = hex.EncodeToString(buf)
-		buf = make([]byte, 0x124)
+		buf = make([]byte, recordLen)
 		n, err = rand.Read(buf)
-		if err != nil || n != 0x124 {
+		if err != nil || n != recordLen {
 			return nil, fmt.Errorf("failed rand read: %s", err)
 		}
 		var extESNIRecord = hex.EncodeToString(buf)
-		extESNI = extESNIHeader + extESNIKeyExchange + "0020" + extESNIDigest + "0124" + extESNIRecord
+		extESNI = extESNIHeader + extESNIKeyExchange + "0020" + extESNIDigest + fmt.Sprintf("%04x", recordLen) + extESNIRecord
 		extLen += len(extESNI) / 2
 	} else if ech {
 		// extension id fe0d draft 13 and 14 ( fe0c draft 12/ fe0e non-existent draft 15? )
