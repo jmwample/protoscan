@@ -1,5 +1,9 @@
 package main
 
+// ESNI based on pcap parsable by wireshark
+//
+// ECH based on sftcd/openssl implementation (https://github.com/sftcd/openssl/blob/ECH-draft-13c/esnistuff/building-curl-openssl-with-ech.md) and draft RFC 13
+
 import (
 	"encoding/hex"
 	"fmt"
@@ -55,7 +59,7 @@ func (p *echProber) sendProbe(ip net.IP, name string, verbose bool) error {
 // calls as some sort of init if speed matters in the future. Or move to using
 // slice init with bytes. But for now it doesn't matter.
 func (p *echProber) buildPayload(name string) ([]byte, error) {
-	return buildECH1_3(name, true)
+	return buildECH1_3(name, true, false)
 }
 
 func (p *echProber) handlePcap(iface string) {
@@ -160,7 +164,7 @@ func buildECH1_2(name string) ([]byte, error) {
 	return hex.DecodeString(fulldata)
 }
 
-func buildECH1_3(name string, esni bool) ([]byte, error) {
+func buildECH1_3(name string, ech, esni bool) ([]byte, error) {
 	// var fulldata = "16030100f8010000f40303000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20e0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000813021303130100ff010000a30000001800160000136578616d706c652e756c666865696d2e6e6574000b000403000102000a00160014001d0017001e0019001801000101010201030104002300000016000000170000000d001e001c040305030603080708080809080a080b080408050806040105010601002b0003020304002d00020101003300260024001d0020358072d6365880d1aeea329adf9121383851ed21a28e3b75e965d0d2cd166254"
 
 	var extLen = len(name) + 4 + 0x8c
@@ -177,6 +181,7 @@ func buildECH1_3(name string, esni bool) ([]byte, error) {
 	var extSNI = extSNIID + extSNIDataLen + extSNIEntryLen + extSNIEntryType + hostnameLen + hostname
 
 	var extESNI = ""
+	var extECH = ""
 	if esni {
 		// dynamic(random) - Encrypted Client Hello extension
 		var extESNIHeader = "ffce016e1301001d0020"
@@ -200,7 +205,51 @@ func buildECH1_3(name string, esni bool) ([]byte, error) {
 		var extESNIRecord = hex.EncodeToString(buf)
 		extESNI = extESNIHeader + extESNIKeyExchange + "0020" + extESNIDigest + "0124" + extESNIRecord
 		extLen += len(extESNI) / 2
-		fmt.Println(extLen, len(extESNI)/2)
+	} else if ech {
+		// extension id fe0d draft 13 and 14 ( fe0c draft 12/ fe0e non-existent draft 15? )
+		// len (2B)
+		// type (1B?)
+		// kdf (2B?)
+		// aead (2B?)
+		// config id (1B)
+		// enc len (2B)
+		// enc (20B)
+		// payload_len (2B)
+		// payload
+		payloadLen := rand.Intn(320-100+1) + 100
+
+		// dynamic(random) - Encrypted Client Hello extension
+		var extECHHeader = "fe0d" + fmt.Sprintf("%04x", payloadLen+42) + "0000010001"
+		buf := make([]byte, 1)
+		n, err := rand.Read(buf)
+		if err != nil || n != 1 {
+			return nil, fmt.Errorf("failed rand read: %s", err)
+		}
+		var extECHConfigID = hex.EncodeToString(buf)
+		buf = make([]byte, 32)
+		n, err = rand.Read(buf)
+		if err != nil || n != 32 {
+			return nil, fmt.Errorf("failed rand read: %s", err)
+		}
+		var extECHEnc = hex.EncodeToString(buf)
+
+		buf = make([]byte, payloadLen)
+		n, err = rand.Read(buf)
+		if err != nil || n != payloadLen {
+			return nil, fmt.Errorf("failed rand read: %s", err)
+		}
+		var extECHRecord = hex.EncodeToString(buf)
+		extECH = extECHHeader + extECHConfigID + "0020" + extECHEnc + fmt.Sprintf("%04x", payloadLen) + extECHRecord
+		extLen += len(extECH) / 2
+
+		// 00
+		// 0001
+		// 0001
+		// f5
+		// 0020
+		// aaa4f06190b9037c7b628b0a7b0bc27d69ef50761612db01600c57e7744eed30
+		// 0110
+		// fa14ecc6c65cedf4ecb108ee383be7d7325db934deb7dbf8254179e374a31908a2feceef9a8a458815e612e17e1075c0f6293a35c5f152d8ed0642632ff69c621f43e60d09a7260291537551a079a15e08ad941c75ec143602b18911e2fddb2c0135cdf3e5a91b02ad6e78a5eddc32b13772c10aa6b101a47e353cf4187071ee4a1874d052f6459cc826e1dafb2028fb7ce22746a295d7ecc405ad20cc3c918c5a3a93a4c3c2846d9327e22cbe617c4d7512214c259ab1f5a6af136376cbc577ff991eb12c362a877edcf28673c2480c4db04630baa4ed2ed17c170a3c46714bef8e6bc20dfe593ddf4e7d71bda993f05859fa1bbb91936668d662b89e1627e980bf2b575f37d3f22e06bf7b953c36ea
 	}
 
 	// dynamic(random) - Client KeyShare extension public key
@@ -246,7 +295,7 @@ func buildECH1_3(name string, esni bool) ([]byte, error) {
 	// Record headder
 	var rh = "160301"
 
-	fulldata := rh + packetLen + hh + clientRandom + sessionID + csAndCM + extensionsLen + extSNI + extESNI + otherExtensions
+	fulldata := rh + packetLen + hh + clientRandom + sessionID + csAndCM + extensionsLen + extSNI + extESNI + extECH + otherExtensions
 	return hex.DecodeString(fulldata)
 }
 
