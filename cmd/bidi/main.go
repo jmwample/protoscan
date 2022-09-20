@@ -92,6 +92,7 @@ func main() {
 		dnsProbeTypeName:  &dnsProber{},
 		httpProbeTypeName: &httpProber{},
 		tlsProbeTypeName:  &tlsProber{},
+		echProbeTypeName:  &echProber{},
 		quicProbeTypeName: &quicProber{},
 		dtlsProbeTypeName: &dtlsProber{},
 	}
@@ -184,6 +185,15 @@ func main() {
 		prober.outDir = *outDir
 		defer t.clean()
 	case *tlsProber:
+		t, err := newTCPSender(*iface, *lAddr4, *lAddr6, !*noSynAck, *synDelay, !*noChecksums)
+		if err != nil {
+			log.Fatal(err)
+		}
+		prober.sender = t
+		prober.dkt = dkt
+		prober.outDir = *outDir
+		defer t.clean()
+	case *echProber:
 		t, err := newTCPSender(*iface, *lAddr4, *lAddr6, !*noSynAck, *synDelay, !*noChecksums)
 		if err != nil {
 			log.Fatal(err)
