@@ -47,7 +47,7 @@ func (s *sendStats) epochReset() {
 	s.ppe = 0
 }
 
-func createDomainKeyTable(domains []string) (*keyTable, error) {
+func createDomainKeyTable(domains []string) (*KeyTable, error) {
 	t := newKeyTable()
 	t.generate = func(s string) (interface{}, error) {
 		return int((rand.Int31() % 64535) + 1000), nil

@@ -21,7 +21,7 @@ const httpFmtStr = "GET / HTTP/1.1\r\nHost: %s\r\nUser-Agent: %s\r\nAccept: */*\
 type httpProber struct {
 	sender *tcpSender
 
-	dkt *keyTable
+	dkt *KeyTable
 
 	outDir string
 }

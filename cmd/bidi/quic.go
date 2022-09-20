@@ -27,7 +27,7 @@ const quicProbeTypeName = "quic"
 type quicProber struct {
 	sender *udpSender
 
-	dkt *keyTable
+	dkt *KeyTable
 
 	outDir string
 }
