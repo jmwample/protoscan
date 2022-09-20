@@ -215,6 +215,7 @@ func main() {
 			log.Fatal(err)
 		}
 		prober.sender = u
+		prober.dkt = dkt
 		prober.outDir = *outDir
 
 		if prober.randDestinationPort {

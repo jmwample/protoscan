@@ -34,6 +34,8 @@ type dtlsProber struct {
 
 	noSNI bool
 
+	dkt *KeyTable
+
 	outDir string
 }
 
@@ -44,6 +46,7 @@ func (p *dtlsProber) registerFlags() {
 }
 
 func (p *dtlsProber) sendProbe(ip net.IP, name string, verbose bool) error {
+	sport, _ := p.dkt.get(name)
 
 	out, err := p.buildPayload(name)
 	if err != nil {
@@ -57,7 +60,7 @@ func (p *dtlsProber) sendProbe(ip net.IP, name string, verbose bool) error {
 	} else {
 		addr = net.JoinHostPort(ip.String(), "443")
 	}
-	sport, err := p.sender.sendUDP(addr, 0, out, verbose)
+	sport, err = p.sender.sendUDP(addr, sport.(int), out, verbose)
 	if err == nil && verbose {
 		log.Printf("Sent :%s -> %s %s %s\n", sport, addr, name, hex.EncodeToString(out))
 	}
