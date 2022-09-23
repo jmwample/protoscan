@@ -1,5 +1,36 @@
 
-Internet censorship effects a significant portion of the internet today, as such
+Internet censorship continues to impact billions of people worldwide,
+and measurement of it remains an important focus of research.
+However, most Internet censorship measurements have focused solely on the IPv4
+Internet infrastructure. Yet, more clients and servers are available over IPv6:
+According to Google, over a third of their users now have native IPv6 access.
+% https://www.google.com/intl/en/ipv6/statistics.html
+
+Given the slow-but-steady rate of IPv6 adoption, it is important to understand
+its impact on censorship. In this paper, we measure and analyze how censorship
+differs over IPv6 compared to the well-studied IPv4 censorship systems in use
+today.
+
+We perform a comprehensive global study of censorship across an array of
+commonly censored protocols, including HTTP, DNS, TLS, and QUIC, on both IPv4
+and IPv6, and compare the results.
+% TODO correct this list
+We find that there are several differences in how countries censor IPv6 traffic,
+both in terms of IPv6 resources, and in where and what blocklists or technology
+are deployed on IPv6 networks. Many of these differences are
+not all-or-nothing: we find that most censors have some capacity to block
+in IPv6, but are less comprehensive or less reliable compared to their IPv4
+censorship systems.
+
+Our results suggest that IPv6 offers new areas for censorship circumvention
+researchers to explore, providing potentially new ways to evade censors. As more
+users gain access to IPv6 addresses and networks, there will be a need for tools
+that take advantage of IPv6 techniques and infrastructure to bypass censorship.
+
+
+
+\if0
+ internet today, as such
 it is extremely important to find ways to measure censorship techniques that impart
 minimal risk to censored netizens. One of the lowest risk strategies for measuring
 censorship relies on censors displaying censorship behavior bidirectionally -
@@ -23,3 +54,4 @@ censors may have to expend additional resources to bring IPv6 censorship up to
 parity with IPv4. In the meantime, this affords censorship circumvention
 researchers a new opportunity to exploit these differences to evade detection
 and blocking.
+\fi
