@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"math/rand"
 	"net"
 	"os"
 	"strconv"
@@ -89,7 +88,6 @@ func (u *udpSender) clean() {
 	}
 }
 
-//
 // if sport is 0 (unset) then the Dial should generate a random source port.
 func (u *udpSender) sendUDP(dst string, sport int, payload []byte, verbose bool) (string, error) {
 
@@ -163,7 +161,11 @@ func (u *udpSender) sendUDPRaw(dst string, sport int, payload []byte, verbose bo
 	if sport == 0 {
 		// If no sport provided pick a random source port between 1000 and 65535
 		// and a random value for ack
-		sport = int((rand.Int31() % 64535) + 1000)
+		s, err := defaultAddressGenerate("")
+		if err != nil {
+			return "", err
+		}
+		sport = s.(int)
 	}
 
 	// Fill UDP  Payload layer details

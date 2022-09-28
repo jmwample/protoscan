@@ -23,6 +23,8 @@ type dnsProber struct {
 	sender *udpSender
 	qType  uint
 
+	dkt *KeyTable
+
 	outDir string
 }
 
@@ -31,10 +33,7 @@ func (p *dnsProber) registerFlags() {
 }
 
 func (p *dnsProber) sendProbe(ip net.IP, name string, verbose bool) error {
-	var minPort = 2000
-	var maxPort = 65535
-	// pick port at random from [minPort,maxPort] inclusive
-	sport := rand.Intn(maxPort-minPort+1) + minPort
+	sport, _ := p.dkt.get(name)
 
 	out, err := p.buildPayload(name)
 	if err != nil {
@@ -42,7 +41,7 @@ func (p *dnsProber) sendProbe(ip net.IP, name string, verbose bool) error {
 	}
 
 	addr := net.JoinHostPort(ip.String(), "53")
-	srcPort, err := p.sender.sendUDP(addr, sport, out, verbose)
+	srcPort, err := p.sender.sendUDP(addr, sport.(int), out, verbose)
 	if err == nil && verbose {
 		log.Printf("Sent :%s -> %s %s %s\n", srcPort, addr, name, hex.EncodeToString(out))
 	}

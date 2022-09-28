@@ -218,6 +218,7 @@ func main() {
 			log.Fatal(err)
 		}
 		prober.sender = u
+		prober.dkt = dkt
 		prober.outDir = *outDir
 		defer u.clean()
 	case *dtlsProber:
