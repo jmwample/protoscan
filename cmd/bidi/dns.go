@@ -31,6 +31,10 @@ func (p *dnsProber) registerFlags() {
 }
 
 func (p *dnsProber) sendProbe(ip net.IP, name string, verbose bool) error {
+	var minPort = 2000
+	var maxPort = 65535
+	// pick port at random from [minPort,maxPort] inclusive
+	sport := rand.Intn(maxPort-minPort+1) + minPort
 
 	out, err := p.buildPayload(name)
 	if err != nil {
@@ -38,9 +42,9 @@ func (p *dnsProber) sendProbe(ip net.IP, name string, verbose bool) error {
 	}
 
 	addr := net.JoinHostPort(ip.String(), "53")
-	sport, err := p.sender.sendUDP(addr, 0, out, verbose)
+	srcPort, err := p.sender.sendUDP(addr, sport, out, verbose)
 	if err == nil && verbose {
-		log.Printf("Sent :%s -> %s %s %s\n", sport, addr, name, hex.EncodeToString(out))
+		log.Printf("Sent :%s -> %s %s %s\n", srcPort, addr, name, hex.EncodeToString(out))
 	}
 
 	return err
@@ -82,7 +86,7 @@ func (p *dnsProber) handlePcap(iface string) {
 
 	if handle, err := pcap.OpenLive(iface, 1600, true, pcap.BlockForever); err != nil {
 		panic(err)
-	} else if err := handle.SetBPFFilter("icmp or udp src port 53"); err != nil { // optional
+	} else if err := handle.SetBPFFilter("icmp or icmp6 or udp src port 53"); err != nil { // optional
 		panic(err)
 	} else {
 		packetSource := gopacket.NewPacketSource(handle, handle.LinkType())

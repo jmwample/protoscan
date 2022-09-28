@@ -86,7 +86,7 @@ func (p *echProber) handlePcap(iface string) {
 
 	if handle, err := pcap.OpenLive(iface, 1600, true, pcap.BlockForever); err != nil {
 		panic(err)
-	} else if err := handle.SetBPFFilter("icmp or tcp src port 443"); err != nil { // optional
+	} else if err := handle.SetBPFFilter("icmp or icmp6 or tcp src port 443"); err != nil { // optional
 		panic(err)
 	} else {
 		defer handle.Close()

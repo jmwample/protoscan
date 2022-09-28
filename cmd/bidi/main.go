@@ -237,7 +237,6 @@ func main() {
 			prober.randPortRange = portRange{
 				min, max,
 			}
-
 		}
 		defer u.clean()
 	}
