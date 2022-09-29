@@ -47,13 +47,13 @@ func (s *sendStats) epochReset() {
 	s.ppe = 0
 }
 
-func defaultAddressGenerate(s string) (interface{}, error) {
+func defaultSourcePortGenerate(s string) (interface{}, error) {
 	return int((rand.Int31() % 64535) + 1024), nil
 }
 
 func createDomainKeyTable(domains []string) (*KeyTable, error) {
 	t := newKeyTable()
-	t.generate = defaultAddressGenerate
+	t.generate = defaultSourcePortGenerate
 
 	for _, d := range domains {
 		_, err := t.tryInsertGenerate(d)

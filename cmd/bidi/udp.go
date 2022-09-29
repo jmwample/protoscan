@@ -161,7 +161,7 @@ func (u *udpSender) sendUDPRaw(dst string, sport int, payload []byte, verbose bo
 	if sport == 0 {
 		// If no sport provided pick a random source port between 1000 and 65535
 		// and a random value for ack
-		s, err := defaultAddressGenerate("")
+		s, err := defaultSourcePortGenerate("")
 		if err != nil {
 			return "", err
 		}
