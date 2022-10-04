@@ -112,6 +112,7 @@ func main() {
 	synDelay := flag.Duration("syn-delay", 2*time.Millisecond, "[HTTP/TLS] when syn ack is enabled delay between syn and data")
 	noChecksums := flag.Bool("no-checksums", false, "[HTTP/TLS] fix checksums on injected packets for TCP protocols")
 	outDir := flag.String("d", "out/", "output directory for log files")
+	captureICMP := flag.Bool("capture-icmp", false, "Capture ICMP in written result pcaps")
 
 	for _, p := range probers {
 		p.registerFlags()
@@ -184,6 +185,7 @@ func main() {
 		prober.sender = t
 		prober.dkt = dkt
 		prober.outDir = *outDir
+		prober.CaptureICMP = *captureICMP
 		defer t.clean()
 	case *tlsProber:
 		t, err := newTCPSender(*iface, *lAddr4, *lAddr6, !*noSynAck, *synDelay, !*noChecksums)
@@ -193,6 +195,7 @@ func main() {
 		prober.sender = t
 		prober.dkt = dkt
 		prober.outDir = *outDir
+		prober.CaptureICMP = *captureICMP
 		defer t.clean()
 	case *echProber:
 		t, err := newTCPSender(*iface, *lAddr4, *lAddr6, !*noSynAck, *synDelay, !*noChecksums)
@@ -202,6 +205,7 @@ func main() {
 		prober.sender = t
 		prober.dkt = dkt
 		prober.outDir = *outDir
+		prober.CaptureICMP = *captureICMP
 		defer t.clean()
 	case *quicProber:
 		u, err := newUDPSender(*iface, *lAddr4, *lAddr6, true, !*noChecksums)
@@ -211,6 +215,7 @@ func main() {
 		prober.sender = u
 		prober.dkt = dkt
 		prober.outDir = *outDir
+		prober.CaptureICMP = *captureICMP
 		defer u.clean()
 	case *dnsProber:
 		u, err := newUDPSender(*iface, *lAddr4, *lAddr6, true, !*noChecksums)
@@ -220,6 +225,7 @@ func main() {
 		prober.sender = u
 		prober.dkt = dkt
 		prober.outDir = *outDir
+		prober.CaptureICMP = *captureICMP
 		defer u.clean()
 	case *dtlsProber:
 		u, err := newUDPSender(*iface, *lAddr4, *lAddr6, true, !*noChecksums)
@@ -229,6 +235,7 @@ func main() {
 		prober.sender = u
 		prober.dkt = dkt
 		prober.outDir = *outDir
+		prober.CaptureICMP = *captureICMP
 
 		if prober.randDestinationPort {
 			min, max, err := parseRandRange(prober.portRangeString)

@@ -7,7 +7,6 @@ import (
 	"log"
 	"math/rand"
 	"net"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -15,8 +14,6 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	"github.com/google/gopacket/pcap"
-	"github.com/google/gopacket/pcapgo"
 )
 
 const dtlsProbeTypeName = "dtls"
@@ -37,7 +34,8 @@ type dtlsProber struct {
 
 	dkt *KeyTable
 
-	outDir string
+	outDir      string
+	CaptureICMP bool
 }
 
 func (p *dtlsProber) registerFlags() {
@@ -74,23 +72,12 @@ func (p *dtlsProber) buildPayload(name string) ([]byte, error) {
 }
 
 func (p *dtlsProber) handlePcap(iface string, exit chan struct{}, wg *sync.WaitGroup) {
-	f, _ := os.Create(filepath.Join(p.outDir, "dtls.pcap"))
-	w := pcapgo.NewWriter(f)
-	w.WriteFileHeader(1600, layers.LinkTypeEthernet)
-	defer f.Close()
-
-	if handle, err := pcap.OpenLive(iface, 1600, true, pcap.BlockForever); err != nil {
-		panic(err)
-	} else if err := handle.SetBPFFilter("icmp or icmp6 or udp src port 443"); err != nil { // optional
-		panic(err)
-	} else {
-		packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
-		for packet := range packetSource.Packets() {
-			w.WritePacket(packet.Metadata().CaptureInfo, packet.Data())
-			// p.handlePacket(packet)
-		}
+	filename := filepath.Join(p.outDir, "dtls.pcap")
+	bpfFilter := "udp src port 443"
+	if p.CaptureICMP {
+		bpfFilter = "icmp or icmp6 or " + bpfFilter
 	}
-
+	capturePcap(iface, filename, bpfFilter, exit, wg)
 }
 
 // handlePacket used for parsing results specific to DTLS.
