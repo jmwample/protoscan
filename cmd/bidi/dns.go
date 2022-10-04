@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -77,7 +78,7 @@ func (p *dnsProber) buildPayload(name string) ([]byte, error) {
 	return out, nil
 }
 
-func (p *dnsProber) handlePcap(iface string) {
+func (p *dnsProber) handlePcap(iface string, exit chan struct{}, wg *sync.WaitGroup) {
 	f, _ := os.Create(filepath.Join(p.outDir, "dns.pcap"))
 	w := pcapgo.NewWriter(f)
 	w.WriteFileHeader(1600, layers.LinkTypeEthernet)

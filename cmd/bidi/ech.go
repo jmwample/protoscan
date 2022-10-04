@@ -15,6 +15,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -78,7 +79,7 @@ func (p *echProber) buildPayload(name string) ([]byte, error) {
 	return buildECH1_2(name)
 }
 
-func (p *echProber) handlePcap(iface string) {
+func (p *echProber) handlePcap(iface string, exit chan struct{}, wg *sync.WaitGroup) {
 	f, _ := os.Create(filepath.Join(p.outDir, "tls.pcap"))
 	w := pcapgo.NewWriter(f)
 	w.WriteFileHeader(1600, layers.LinkTypeEthernet)

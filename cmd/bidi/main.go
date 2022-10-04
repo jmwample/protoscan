@@ -17,7 +17,7 @@ type prober interface {
 
 	sendProbe(ip net.IP, name string, verbose bool) error
 
-	handlePcap(iface string)
+	handlePcap(iface string, exit chan struct{}, wg *sync.WaitGroup)
 }
 
 type job struct {
@@ -251,7 +251,10 @@ func main() {
 		go worker(p, *wait, *verbose, jobs, &wg)
 	}
 
-	go p.handlePcap(*iface)
+	pcapWg := sync.WaitGroup{}
+	pcapWg.Add(1)
+	pcapExit := make(chan struct{})
+	go p.handlePcap(*iface, pcapExit, &pcapWg)
 
 	go func() {
 		start := time.Now()
@@ -280,8 +283,11 @@ func main() {
 		}
 	}
 	close(jobs)
-
 	wg.Wait()
+
+	pcapExit <- struct{}{}
+	close(pcapExit)
+	pcapWg.Wait()
 
 	// sleep for 15 seconds while handlePcap still runs in case of delayed responses
 	// time.Sleep(15 * time.Second)

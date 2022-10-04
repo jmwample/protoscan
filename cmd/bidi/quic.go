@@ -12,6 +12,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"sync"
 	"unsafe"
 
 	"github.com/google/gopacket"
@@ -174,7 +175,7 @@ func (p *quicProber) buildCryptoFramePaylaod(name string) ([]byte, error) {
 	return hex.DecodeString(fulldata)
 }
 
-func (p *quicProber) handlePcap(iface string) {
+func (p *quicProber) handlePcap(iface string, exit chan struct{}, wg *sync.WaitGroup) {
 	f, _ := os.Create(filepath.Join(p.outDir, "quic.pcap"))
 	w := pcapgo.NewWriter(f)
 	w.WriteFileHeader(1600, layers.LinkTypeEthernet)

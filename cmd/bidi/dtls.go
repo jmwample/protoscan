@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -72,7 +73,7 @@ func (p *dtlsProber) buildPayload(name string) ([]byte, error) {
 	return buildDTLS1_2(name, !p.noSNI)
 }
 
-func (p *dtlsProber) handlePcap(iface string) {
+func (p *dtlsProber) handlePcap(iface string, exit chan struct{}, wg *sync.WaitGroup) {
 	f, _ := os.Create(filepath.Join(p.outDir, "dtls.pcap"))
 	w := pcapgo.NewWriter(f)
 	w.WriteFileHeader(1600, layers.LinkTypeEthernet)

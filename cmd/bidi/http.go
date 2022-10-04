@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -52,7 +53,7 @@ func (p *httpProber) sendProbe(ip net.IP, name string, verbose bool) error {
 	return err
 }
 
-func (p *httpProber) handlePcap(iface string) {
+func (p *httpProber) handlePcap(iface string, exit chan struct{}, wg *sync.WaitGroup) {
 	f, _ := os.Create(filepath.Join(p.outDir, "http.pcap"))
 	w := pcapgo.NewWriter(f)
 	w.WriteFileHeader(1600, layers.LinkTypeEthernet)

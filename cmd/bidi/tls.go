@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"compress/gzip"
 	"encoding/hex"
 	"fmt"
 	"log"
@@ -8,6 +10,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -58,9 +61,27 @@ func (p *tlsProber) buildPayload(name string) ([]byte, error) {
 	return buildTLS1_2(name)
 }
 
-func (p *tlsProber) handlePcap(iface string) {
-	f, _ := os.Create(filepath.Join(p.outDir, "tls.pcap"))
-	w := pcapgo.NewWriter(f)
+func (p *tlsProber) handlePcap(iface string, exit chan struct{}, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	filename := filepath.Join(p.outDir, "tls.pcap")
+	f, err := os.Create(filename + ".gz")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	// Required otherwise io doesn't flush properly on deferred close
+	outWriter := bufio.NewWriter(f)
+	defer outWriter.Flush()
+
+	// Write PCAP in compressed format.
+	archiver := gzip.NewWriter(outWriter)
+	archiver.Name = filename
+	defer archiver.Close()
+
+	// Write PCAP
+	w := pcapgo.NewWriter(archiver)
 	w.WriteFileHeader(1600, layers.LinkTypeEthernet)
 	defer f.Close()
 
@@ -73,8 +94,14 @@ func (p *tlsProber) handlePcap(iface string) {
 
 		packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 		for packet := range packetSource.Packets() {
-			// p.handlePacket(packet)
-			w.WritePacket(packet.Metadata().CaptureInfo, packet.Data())
+			select {
+			case <-exit:
+				log.Println("Closing pcap handler")
+				return
+			default:
+				// p.handlePacket(packet)
+				w.WritePacket(packet.Metadata().CaptureInfo, packet.Data())
+			}
 		}
 	}
 }
