@@ -1,31 +1,75 @@
 \section{Background}\label{sec:background}
 
 
-\red{todo: Probably just want this section to provide background on censorship injection,
-and the fact that it can be sometimes observed bidirectionally. Don't need as much detail on
-what censorship is / the different types, just the parts relevant for this paper (injection,
-bidirectionality). I also don't think IPv6 really needs any space here, we can explain it
-in context where it's needed.}
+%\red{todo: Probably just want this section to provide background on censorship injection,
+%and the fact that it can be sometimes observed bidirectionally. Don't need as much detail on
+%what censorship is / the different types, just the parts relevant for this paper (injection,
+%bidirectionality). I also don't think IPv6 really needs any space here, we can explain it
+%in context where it's needed.}
 
-Our work is focused on uncovering differences in {\em Internet censorship} that occur
-from {\em DNS censorship} mechanisms' failure to effectively adapt to the Internet's
-{\em adoption of the IPv6 protocol}. In this section, we provide an overview of
-Internet censorship approaches (\Cref{sec:background:censorship}), DNS
-censorship mechanisms and infrastructure (\Cref{sec:background:dns}), and the
-impact of IPv6 on DNS censorship (\Cref{sec:background:ipv6}).
 
-\subsection{Internet censorship}\label{sec:background:censorship}
+% Censorship: Injection in response to packets
 
-\para{What constitutes Internet censorship?}
-Internet censorship can be broadly defined as the act of filtering or blocking
-access to Internet content \cite{townsend}. Like previous work, we also use
-this definition when measuring censorship.
-
-\para{Internet censorship techniques.}
-\red{todo: pass}
+%Our work is focused on uncovering differences in {\em Internet censorship} that occur
+%from {\em DNS censorship} mechanisms' failure to effectively adapt to the Internet's
+%{\em adoption of the IPv6 protocol}. In this section, we provide an overview of
+%Internet censorship approaches (\Cref{sec:background:censorship}), DNS
+%censorship mechanisms and infrastructure (\Cref{sec:background:dns}), and the
+%impact of IPv6 on DNS censorship (\Cref{sec:background:ipv6}).
 %
-Blocking access to Internet content can occur in a variety of ways and at
-different layers of the networking stack, all of which require the ability to
+%\subsection{Internet censorship}\label{sec:background:censorship}
+%
+%\para{What constitutes Internet censorship?}
+%Internet censorship can be broadly defined as the act of filtering or blocking
+%access to Internet content \cite{townsend}. Like previous work, we also use
+%this definition when measuring censorship.
+%
+%\para{Internet censorship techniques.}
+%\red{todo: pass}
+%
+
+Censors block access to Internet content in a variety of ways and at
+different layers of the networking stack. Most commonly, censors employ IP-based
+blocking and packet injection to prevent access to censored content and
+resources. Censors inspect network traffic passively, and inject (spoofed) responses to
+DNS, TLS, HTTP, and other requests for censored
+content~\cite{lowe2007great,hoang2021great,quack,xu2011internet,aryan2013internet,chai2019importance,elemnhorst2021web,elmenhorst2022quic}.
+
+
+While censors typically deploy censorship mechanisms on the edge of their
+network~\cite{xu2011internet} with the goal of blocking requests for users
+within the country, the system often work \emph{bidirectionally}, applying
+blocklist policies to traffic originating inside or outside the
+country.
+This bidirectional censorship allows vantage points anywhere around the world
+to trigger a censorship response and measure the impact---a falsified
+response, an injected connection teardown, connection timeout, etc.---
+regardless of their remote location~\cite{collateral-dns}.
+
+Prior work has used the bidirectional effect to study censorship in countries from the outside
+looking in, by sending censored queries to DNS, TLS, or echo servers, and
+observing injected censorship
+responses~\cite{quack,pearce2017augur,pearce2017global,scott2016satellite,sundara2020censored}.
+This allows researchers to study many countries from a single vantage point that
+need not be located in a censoring region.
+
+
+
+
+
+Prior work has observed that packet injection can be
+\emph{bidirectional}, in that a censor will inject responses to a request that
+originates outside the censoring country, as well as from inside.
+For instance, researchers have found
+that China's Great Firewall injects DNS responses for censored queries,
+regardless of where they originate~\cite{collateral-dns}.
+
+Bidirectional censorship can be observed from 
+
+
+
+
+all of which require the ability to
 monitor network traffic passing through the censor's borders. The simplest and
 most common approaches are: (1) IP-based blocking in which a censor maintains
 blocklists of IP addresses and prevent connections to these IP addresses; (2)
