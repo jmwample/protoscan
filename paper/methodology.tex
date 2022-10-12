@@ -7,21 +7,28 @@ draw target addresses and domains that trigger censorship responses.
 
 \subsection{Selecting target domains}
 \label{sec:methodology:domains}
-As our primary goal is to identify the prevalence of bidirectional censorship
-capabilities at local, organizational, or national scale we require a list of
-domains that will trigger censorship responses. We begin by selecting domains
-from censored planet lists, then for specific case studies we use more targeted
-lists of domains known to be censored in specific - i.e. the Roskomnadzor
-censorship domain name list for Russia~\cite{}. If no well coordinated public
-list is available, for country specific case studies we use the censored planet
-list tailored to the individual country.
+Bidirectional censorship is triggered whenever a censor detects a domain present 
+in its block-list of domains to censor. The Citizen Lab \cite{TheCitiz6:online}
+maintains a list of domains \cite{testlist} which are known to be present 
+in censor's block-lists. These lists contain country-specific domains i.e\ domains that are tested specifically for each country with country specific context e.g\ local language and global domains which contain content e.g\ freedom of expression, gambling e.t.c.\ known to be considered sensitive in most censoring countries. For this study, we used the global list to conduct our measurements as we are concerned with measuring the prevalence of bidirectional censorship globally i.e\ how many countries deploy bidirectional censorship. The global list contains $\sim$1400 domains.
 
-We supplement this set with multiple control domains that we host in the US that
-provide valid A and AAAA records. These controls are not present in any
-blocklist, nor are they are not subdomains or substring matches of any
-blocklisted domain in a blocklist that we are aware of. This provides a baseline
-against which we can determine whether or not responses are ``normal'' when
-requests contain blocklisted domain names.
+We supplement this set with 10 control domains. These controls are not present in any
+block-list, nor are they are not sub-domains or substring matches of any block-listed domain in a block-list that we are aware of. 3 of these domains are hosted in the US and provide valid A and AAAA record.
+% As our primary goal is to identify the prevalence of bidirectional censorship
+% capabilities at local, organizational, or national scale we require a list of
+% domains that will trigger censorship responses. We begin by selecting domains
+% from censored planet lists, then for specific case studies we use more targeted
+% lists of domains known to be censored in specific - i.e. the Roskomnadzor
+% censorship domain name list for Russia~\cite{}. If no well coordinated public
+% list is available, for country specific case studies we use the censored planet
+% list tailored to the individual country.
+
+% We supplement this set with multiple control domains that we host in the US that
+% provide valid A and AAAA records. These controls are not present in any
+% blocklist, nor are they are not subdomains or substring matches of any
+% blocklisted domain in a blocklist that we are aware of. This provides a baseline
+% against which we can determine whether or not responses are ``normal'' when
+% requests contain blocklisted domain names.
 
 \subsection{Selecting IP Addresses}
 \label{subsec:selecting-ips}
@@ -31,14 +38,23 @@ by a censor such that benign control probes receive a predictable response or no
 response at all, but sensitive domains trigger characteristic responses from the
 on path censor.
 
-Fortunately, a significant majority of ipv4 addresses (and an even more
-overwhelming majority in IPv6) are not servers that provide access to the
-services that we measure. In fact, around 1\% of addresses in the IPv4 space
-will complete a TCP handshake for port 443~\cite{}. The rate is similar for
-TCP:80 and UDP:53. UDP:443 is even more rare as Quic is a developing
-protocol and DTLS is not a commonly used. As such addresses chosen at random are
-overwhelmingly likely to not host servers that respond to benign requests.
-% For each individual protocol that we measure we need to target non-responsive
+As we wanted a truly global view of bidirectional censorship, we wanted to test as many countries and as many allocations in each country as possible. To this end, we collected a list of all IP allocations announced by all 5 regional registries \cite{herrbisc56:online}. This list contained $\sim$155,000 IPv4 and $\sim$63,000 IPv6 allocations from a total of $\sim$200 countries (and regions). We then used MaxMind \cite{IPGeoloc87:online} to assign the Autonomous System numbers and organization names to each of these allocations. Our final allocations consisted of all allocations from all organizations that had at least 1 IPv4 and 1 IPv6 allocation resulting in 
+$\sim$71,000 IPv4 and $\sim$20,000 IPv6 allocations spanning all the countries in our initial dataset.   
+
+These allocations contain the whole IP block that the regional registries assigned to regional organizations. However, part of this IP block might remain unused and hence unannounced by the organization. Choosing IP addresses from the unannounced region of an IP block might never be routed to the country the IP block belongs to and a censorship response would not be triggered by the country's on path censor. This would result in under-representation of the true prevalence of bidirectional censorship in a country. So instead of using IP addresses in allocated prefixes for testing bidirectional censorship, we chose IP addresses only from the announced prefixes of each allocation. We used the \textit{University of Oregon Route Views Project} \cite{RouteVie20:online}
+to get all the announced prefixes for each of the allocated IP block. This resulted in a total of 
+$\sim$313,000 IPv4 and $\sim$40,000 IPv6 announced IP prefixes. 
+
+For each of the announced prefix, both IPv4 and IPv6, we select a set of $N=10$
+addresses at random. We arrived at this number after a couple of considerations. First, scanning the entirety of the addresses space for $\sim$1400 domains is infeasible for IPv4 and impossible for IPv6. Second, our aim is to test for on path censorship on the penultimate hop and not reach the end hosts themselves. This technique allows us to test for bidirectional censorship while maintaining the breadth of our measurements. Choosing 10 addresses from each of the announced prefix in our allocation dataset amounted to $\sim$3.5 million IP addresses.
+% Fortunately, a significant majority of ipv4 addresses (and an even more
+% overwhelming majority in IPv6) are not servers that provide access to the
+% services that we measure. In fact, around 1\% of addresses in the IPv4 space
+% will complete a TCP handshake for port 443~\cite{}. The rate is similar for
+% TCP:80 and UDP:53. UDP:443 is even more rare as Quic is a developing
+% protocol and DTLS is not a commonly used. As such addresses chosen at random are
+% overwhelmingly likely to not host servers that respond to benign requests.
+% % For each individual protocol that we measure we need to target non-responsive
 % addresses, or understand benign ''go away'' responses elicited by control
 % probes. One way that we can do this is by using the
 % Zmap~\cite{Durumeric13zmap} tool to perform a port scan on the port associated
@@ -48,19 +64,19 @@ overwhelmingly likely to not host servers that respond to benign requests.
 % When selecting addresses we then incorporate this list by actively avoiding
 % responsive hosts.
 
-Given the significant number of domains that we endeavour to include in our
-measurement it is impractical to scan the entire IPv4 space for each domain.
-Further, given the scale of the IPv6 addresses space it is impossible to scan
-all available addresses for even one domain. In order to achieve a
-representative result in light of these limitations we select a set of $N=5$
-addresses at random from each announced IPv4 and IPv6 subnet allocations. While
-addresses are typically not used at random within subnet allocation and our
-address selections do not represent this human factor, our goal is to test for
-on path censorship up to the penultimate hop, not reach the end hosts
-themselves. We believe that this breadth based strategy overcomes limitations of
-which portions of allocated subnets are unrouted or privately subdivided as the
-probes route {\bf towards} the allocated subnet testing a majority of the paths
-on the internet with tunable redundancy for censorship responses along the way.
+% Given the significant number of domains that we endeavor to include in our
+% measurement it is impractical to scan the entire IPv4 space for each domain.
+% Further, given the scale of the IPv6 addresses space it is impossible to scan
+% all available addresses for even one domain. In order to achieve a
+% representative result in light of these limitations we select a set of $N=5$
+% addresses at random from each announced IPv4 and IPv6 subnet allocations. While
+% addresses are typically not used at random within subnet allocation and our
+% address selections do not represent this human factor, our goal is to test for
+% on path censorship up to the penultimate hop, not reach the end hosts
+% themselves. We believe that this breadth based strategy overcomes limitations of
+% which portions of allocated subnets are unrouted or privately subdivided as the
+% probes route {\bf towards} the allocated subnet testing a majority of the paths
+% on the internet with tunable redundancy for censorship responses along the way.
 
 \subsection{Identifying Bidirectional Censorship}
 \label{sec:methodology:censorship}
