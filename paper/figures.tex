@@ -1194,7 +1194,7 @@ Anguilla (AI)         &     1  & \cellcolor{red5}  25.9\% & \cellcolor{green0} 1
 \newcommand{\FigProbeSend}{
     \begin{figure}[t]
      \centering
-     \includegraphics[width=0.95\linewidth]{figures/probe_send.pdf}
+     \includegraphics[width=0.95\linewidth]{figures/probe_send_0.2.pdf}
      \caption{\textbf{Sending Probes}\,---\,%
             For each protocol tested we send probes to addresses where we do not
             expect responses. When a passive censor monitoring traffic along the
@@ -1204,3 +1204,15 @@ Anguilla (AI)         &     1  & \cellcolor{red5}  25.9\% & \cellcolor{green0} 1
     \end{figure}
 }
 
+
+\newcommand{\FigAllocSize}{
+    \begin{figure*}[t]
+     \centering
+     \includegraphics[width=0.95\linewidth]{figures/bgp_allocation_sizes_cropped.png}
+     \caption{\textbf{Target allocation sizes}\,---\,%
+            We draw our target addresses at random from BGP announced
+            allocations. This graph shows the allocation sizes from which we
+            select for both IPv4 and IPv6.}
+    \label{fig:allocsizes}
+    \end{figure*}
+}
