@@ -8,7 +8,7 @@ In this section, we detail limitations
 % The design and evaluation of this experiment included many complicating factors.
 % Our decision making was structured to achieve the conservative result at each
 % stage. However, we provide a discussion of the limitations of our experiments in
-% order to transparently contextualize our work. 
+% order to transparently contextualize our work.
 %
 % This context provides an interesting vantage into future directions for pursuing
 % censorship circumvention tools that leverage the gap in the transition from IPv4
@@ -24,22 +24,34 @@ Measuring censorship in order to gain an understanding of the underlying
 infrastructure and identify weaknesses for circumvention is a challenging task
 due to the absence of ground truth for validation and the often probabilistic
 nature of censorship and networking failures which are easily confused.
-%
+
 Although we take care to always err on the side of caution and consider many
 confounding factors including end-point type and AS diversity, our work is
 fundamentally a best-effort attempt at trying to identify the gaps that have
-emerged in DNS censorship deployments because of the increased adoption of
-IPv6. The limitations of our study arise from three sources.
+emerged in Bidirectional censorship deployments because of the increased
+adoption of IPv6.
 
 \para{External sources of data.}
-Our study relies on multiple data sources including Satellite and the Citizen
-Lab for our domain lists, McAfee's domain labeling services for categorizing
-our data, and Maxmind's datasets for geolocating and classifying connection
-types of our resolvers. Although each of these datasets has been validated in
-the past and are commonly used in research, our results and their corresponding
-analyses are limited by their reliability.
+Our study relies on multiple data sources including \textit{The Citizen
+Lab}~\cite{TheCitiz6:online} for our domain lists, the \textit{Route Views
+Project}~\cite{RouteVie20:online} for BGP allocation data, and Maxmind's
+datasets~\cite{maxmind-connectiondb} for geolocating our chosen target
+addresses. Although each of these datasets has been validated in the past and
+are commonly used in research, our results and their corresponding analyses are
+limited by their reliability.
 
-\para{Statistical limitations.} \dots
+\para{Network stability}
+Due to the nature of bidirectional censorship, where the typical benign response
+is no response, it is not possible to easily distinguish a negative result from
+a probe that would receive a censorship response but was dropped by the network
+before it reached the censoring link. We believe that our results are still
+representative as we are looking for the presence of bidirectional censorship
+capabilities in aggregate rather than relying on the correctness each individual
+probe. The drop rates in most networks are low and each allocation has 10
+selected addresses, each of which receives a probe for each of the 1400 domains
+that we test providing a significant level of redundancy.
+
+% \para{Statistical limitations.} \dots
 % Throughout our study, we aimed to err on the side of caution in order to avoid
 % presenting false-positives in our results. Therefore, we relied on rigorous
 % statistical approaches in order to identify differences in censorship between
@@ -54,7 +66,7 @@ analyses are limited by their reliability.
 % the case study (\Cref{sec:cases}) shows that a much larger number of resolvers
 % performed censorship over a small set of just 21 domains. This is a fundamental
 % limitation of any test of two proportions such as the $z$-test used in this
-% work. 
+% work.
 
 % %   Let's bring this up if they ask about it. From what I understand the stats
 % %   people are in two camps. Some think this is ok and others will kill
@@ -69,11 +81,66 @@ analyses are limited by their reliability.
 % % conclusions.
 \subsection{Future Work} \label{sec:discussion:future}
 
-\begin{itemize}
-	\item Keyword scanning in HTTP
-	\item checksum validity scanning
-	\item ECH / ESNI in TLS ClientHello
-\end{itemize}
+While we find that a global scan of bidirectional censorship provides a broad
+view of network interference, several open questions and opportunities for
+further investigation still exist.
+
+\para{Censorship Strategies}
+This study is in no way an enumeration of censorship strategies, for example
+HTTP keyword based censorship is a common strategy known to be deployed in
+several nation-state networks. However, the keyword blocklists tend to be more
+regionally specific and significantly larger. At the scale of target addresses
+that we send in this work the number of probes becomes difficult to manage.
+
+\para{Fingerprinting}
+Given the large number of networks and network-actors that we identify in this
+work we intend to perform a classification of censorship behaviors at the
+protocol level to identify and link common censorship infrastructure and
+identify commonalities where circumvention techniques can be shared.
+
+For target addresses that are identified as having a censor on-path, follow-up
+scans using tools such as geneva~\cite{bock2019geneva} could be done to further
+explore the extent to which censorship can be fingerprinted and circumvented.
+Elements of such a fingerprint would include packet level details like IPID and
+IPTTL of injected packets as well as censorship trigger conditions relating to
+protocol validity elements like flags, checksum validity, and extensions.
+
+
+\para{Intentional Packet Drops}
+One key censorship response that we do not capture in the work is intentional
+packet drops. This is not passively differentiable from the benign response in
+our scan, however it is a widely deployed censorship technique. One potential
+way to bridge this gap is to extend this work to measure packet drops by
+incorporating an analysis of the IPID in response packets sent by the truly
+benign target addresses. For targets that send TCP RST packets with a globally
+incrementing IPID shared by all destination hosts analysis can indicate when a
+packet to the target address was dropped in-flight as described by Ensafi
+\etal~\cite{ensafi:detecting}. Again this type of analysis increases the number
+of packets required to establish confidence due to noise and network
+instability, but such a measurement would provide a significant extension to the
+results we present in this work.
 
 
 \subsection{Conclusions} \label{sec:discussion:conclusions}
+
+The nature of the contemporary internet is such that censorship infrastructure
+is widely deployed and commonly found in many nation-state networks around the
+world. In order to better understand the breadth of censorship, explore the
+extent to which the ongoing deployment of IPv6 is effected, and shine a light on
+as many censors as possible we develop a custom tool for performing rapid global
+measurements of censorship.
+
+We experimentally find that \red{XX} networks deploy at least one form of
+bidirectional censorship capability, aggregating into \red{N} countries that
+censor at a seemingly national scale. We explore the protocols that each of
+these censors actively interfere in showing that national censorship
+infrastructure differs significantly by the various protocols that are effected,
+stateful-ness of the censor, and the impacts of that censorship on subsequent
+connections. Beyond this we show that multiple national censorship strategies
+have significant differences in the effects on IPv4 and IPv6 connections with
+some demonstrating relatively similar capacity between the two, and some nations
+censoring only one IP version.
+
+It is important to understand the current state of censorship in the context of
+a developing internet. This work contributes to a broader understanding of
+global censorship and the gaps there-in.
