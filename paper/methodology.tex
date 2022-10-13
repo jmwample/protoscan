@@ -30,6 +30,9 @@ requests contain blocklisted domain names.
 
 \subsection{Selecting IP Addresses}
 \label{subsec:selecting-ips}
+
+\FigAllocSize
+
 Our goal in selecting target IP addresses for each experiment is to identify a
 set of non-responsive hosts within IP address allocations that transit a link
 monitored by a censor such that benign control probes receive a predictable
@@ -67,8 +70,6 @@ penultimate hop and not necessarily reach the end hosts themselves. This
 technique allows us to test for bidirectional censorship while maintaining the
 breadth of our measurements. Choosing 10 addresses from each of the announced
 prefix in our allocation dataset results in over 3.5 million IP addresses.
-
-\FigAllocSize
 
 \subsection{Identifying Bidirectional Censorship}
 \label{sec:methodology:censorship}
