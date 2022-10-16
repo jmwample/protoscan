@@ -75,20 +75,25 @@ prefix in our allocation dataset results in over 3.5 million IP addresses.
 \label{sec:methodology:censorship}
 
 We focus on identifying bidirectional censorship via injected responses to
-ingress traffic. This allows us to send probes from external vantage points and
-receive responses that we can classify as either expected or characteristic of
-censorship. We do this for several different protocols that are known (or
-suspected) to be censored. For each of the following probe types we first
-conduct a measurement of control domains only to all target addresses. This is
-followed by a complete measurement in which we send probes containing all
-sensitive domains with control domains mixed in. For each experiment we stripe
-IP by domain such that each domain is sent too all IPs before any individual IP
-is given a second domain. This is done to prevent our scanner from overwhelming
-any individual target address.
+ingress traffic. \textbf{\Cref{fig:india}} shows how bidirectional censorship can be measured from vantage points outside the censor state in question. For this study, we label all responses to probes we do not expect a response from as a bidirectional censorship response. In the context of this study, we do not expect any responses from IP addresses that are not live, regardless of the (protocol,domain) pair we query them for. We conduct this measurement for several different protocols that are known (or suspected) of being censored. For each experiment, we stripe IP by domain such that each domain is sent to all IPs before any individual IP is given a second domain. This is done to prevent our scanner from overwhelming any individual target address.
+% receive responses that we can classify as either expected or characteristic of
+% censorship. We do this for several different protocols that are known (or
+% suspected) to be censored. For each of the following probe types we first
+% conduct a measurement of control domains only to all target addresses. This is
+% followed by a complete measurement in which we send probes containing all
+% sensitive domains with control domains mixed in. For each experiment we stripe
+% IP by domain such that each domain is sent too all IPs before any individual IP
+% is given a second domain. This is done to prevent our scanner from overwhelming
+% any individual target address.
 
-In between experiments we take several minutes to allow any potential residual
-censorship to timeout before shuffling both addressed and domains and
-initializing the scan for the next probe type.
+
+\subsubsection{Controlling for responsive targets and residual censorship}
+Due to the breadth of our measurement and the amount of IP addresses we choose as our targets, a subset of these targets are bound to be active IP addresses. Going by our definition of a bidirectional censorship response, this would introduce some false positives into our results (i.e.\ counting a response from a live IP address as a response from the bidirectional censor). Furthermore, controlling for live IP addresses is made more complicated if the censor deploys residual censorship \cite{bock2021your}. Such censors block all subsequent requests, after a sensitive query, for a certain period of time. 
+During this time, requests for control/innocuous domains would also result in a response, thereby increasing false positives.
+
+To cater for these two scenarios, we conduct our scans in two phases. During the first phase, we send queries to all the IP addresses in our dateset but only for the control domains described in \Cref{sec:methodology:domains}. As none of these domains should trigger bidirectional censorship (as they should not be present in a censor's block-list), all responses we receive should be from live IP addresses sending back legitimate responses. For the next phase of our experiment, we repeat the experiment but with 1,400 sensitive domains instead. \textbf{We consider all responses from IP addresses that responded only during the second phase as bidirectional censorship responses.}
+
+
 
 \subsubsection{TCP}
 While some firewall implementations explicitly look for singular TCP (TLS, HTTP,
