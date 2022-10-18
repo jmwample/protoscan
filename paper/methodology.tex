@@ -1,50 +1,91 @@
 \section{Datasets \& Methodology}\label{sec:methodology}
 
-In this section we outline our measurement technique for establishing a breadth
-based understanding of bidirectional censors on the internet. We cover the
-details of the various probes that we send as well as the sources from which we
-draw target addresses and domains that trigger censorship responses.
+In this section we outline our technique for measuring bidirectional censorship
+globally. While this technique can miss several kinds of censorship (e.g.
+censorship limited to a country, or IP-based blocks), it allows us to
+efficiently measure censorship around the world from a single vantage point.
+%We emphasize there may be other techniques...
+Bidirectional censorship occurs when a country's firewall is agnostic to the
+direction that packets cross the border, and injects responses even if the
+offending request or connection originates outside the country. This allows us
+to send a censored packet into the country from our vantage point in
+North America, and receive back injected responses.
+
+ %establishing a breadth
+%ased understanding of bidirectional censors on the internet. We cover the
+%etails of the various probes that we send as well as the sources from which we
+% raw target addresses and domains that trigger censorship responses.
 
 \FigProbeSend
 
 \subsection{Selecting target domains}
 \label{sec:methodology:domains}
-Bidirectional censorship is triggered whenever a censor detects a domain present
-in its block-list of domains to censor. The Citizen Lab \cite{TheCitiz6:online}
-maintains a list of domains \cite{testlist} which are known to be present in the
-block-lists of several censors. These lists contain country-specific domains
-i.e\ domains that are tested specifically for each country with country specific
-context (e.g\ local language) and global domains which contain content (e.g\
-freedom of expression, gambling e.t.c.) commonly considered sensitive in
-censoring countries. For this study, we used the global list to conduct our
-measurements as we are concerned with measuring the prevalence of bidirectional
-censorship globally i.e\ which countries deploy bidirectional censorship
-strategies. The global list contains approximately 1400 domains.
+We begin by selecting a list of domains that are likely to trigger injected
+responses from censoring countries around the world.
+%Bidirectional censorship is triggered whenever a censor detects a domain present
+%in its block-list of domains to censor. 
+We use The Citizen Lab's~\cite{TheCitiz6:online} domain test
+list~\cite{testlist}, which includes domains that are known to be blocked by
+many censors. We use the global test list for our measurements, rather than
+country-specific lists, to keep our experiments consistent across countries.
+This list contains approximately 1400 domains.\todo{How many exactly? What date
+was it downloaded?}
 
-We supplement this set with 10 control. These controls are not present
-in any block-list, nor are they are sub-domains or substring matches of any
-domain in a block-list that we are aware of. Three of these domains are
-hosted in the US and provide valid A and AAAA records. This provides a baseline
-against which we can determine whether or not responses are ``normal'' when
-requests contain blocklisted domain names.
+%maintains a list of domains \cite{testlist} which are known to be present in the
+%block-lists of many censors. These lists contain country-specific domains
+%i.e\ domains that are tested specifically for each country with country specific
+%context (e.g\ local language) and global domains which contain content (e.g\
+%freedom of expression, gambling e.t.c.) commonly considered sensitive in
+%censoring countries. For this study, we used the global list to conduct our
+%measurements as we are concerned with measuring the prevalence of bidirectional
+%censorship globally i.e\ which countries deploy bidirectional censorship
+%strategies. The global list contains approximately 1400 domains. \todo{Exact
+%number of domains?}
+
+We supplement this list with 10 control domains that to our knowledge are not
+blocked by any censors. Our control domains are a combination of domains we set up
+specifically for these measurements, and domains that have not been registered
+(produce an NXDOMAIN).
+If an IP responds to requests (e.g. DNS, HTTP,
+TLS, etc) containing our control domains, we assume that IP is a legitimate host
+or non-censoring firewall (e.g. paywall or corporate firewall), and remove the
+IP from our study. Thus, we use control domains to locate \emph{unused} IPs that
+don't respond to our control queries, and test for in-network injections to
+these IPs.
+
+%not present
+%in any block-list, nor are they are sub-domains or substring matches of any
+%domain in a block-list that we are aware of. Three of these domains are
+%hosted in the US and provide valid A and AAAA records. This provides a baseline
+%against which we can determine whether or not responses are ``normal'' when
+%requests contain blocklisted domain names.
 
 \subsection{Selecting IP Addresses}
 \label{subsec:selecting-ips}
 
 \FigAllocSize
 
-Our goal in selecting target IP addresses for each experiment is to identify a
-set of non-responsive hosts within IP address allocations that transit a link
-monitored by a censor such that benign control probes receive a predictable
-response or no response at all, but sensitive domains trigger characteristic
-responses from the on path censor.
+Our goal is to identify destinations that we can send probes to that will route
+past a particular country's censorship infrastructure, but not reach a
+responsive host. Ideally, our probe either triggers censorship (if it is on path) and
+receives an injection, or the probe is dropped by a router or host in the censoring
+country. To achieve this, we select IP addresses to scan that are routed, in a
+given country, but ultimately
+non-responsive to our control domain probes.
+
+%
+%Our goal in selecting target IP addresses for each experiment is to identify a
+%set of non-responsive hosts within IP address allocations that transit a link
+%monitored by a censor such that benign control probes receive a predictable
+%response or no response at all, but sensitive domains trigger characteristic
+%responses from the on path censor.
 
 % In order to achieve a representative global view of bidirectional censorship
 % we test as many countries and as many allocations in each country as possible.
 We begin by collecting a list of all IP allocations announced by the 5 regional
-registries \cite{herrbisc56:online} containing 155k IPv4 and
+registries~\cite{herrbisc56:online} containing 155k IPv4 and
 63k IPv6 allocations from a total of over 200 countries. We use
-MaxMind \cite{IPGeoloc87:online} to assign the Autonomous System Numbers (ASNs)
+MaxMind~\cite{IPGeoloc87:online} to assign the Autonomous System Numbers (ASNs)
 and organization names to each of these allocations. We then filter out
 organizations that do not have at least one IPv4 and one IPv6 allocation
 resulting in 71k IPv4 and 20k IPv6 allocations.
@@ -60,8 +101,11 @@ chosen IP addresses are routable and lower the chance of this type of false
 negative result we chose IP addresses only from the announced prefixes of each
 allocation. We used the \textit{University of Oregon Route Views Project}
 \cite{RouteVie20:online} to get all the announced prefixes for each of the
-allocated IP block. This resulted in a total of 313k IPv4 and 40k IPv6 prefixes.
+allocated IP block, as of \todo{What date did we download this?}. This resulted in a total of 313k IPv4 and 40k IPv6 prefixes.
 
+
+%could simplify or cut - we choose 10 addresses randomly from each prefix,
+%resulting in 3.5 million IP addresses total.
 For each announced prefix, we select a set of $N=10$ addresses at random. We
 arrived at this number after a couple of considerations. First, scanning the
 entirety of the addresses space for 1400 domains is infeasible for IPv4 and
@@ -74,27 +118,127 @@ prefix in our allocation dataset results in over 3.5 million IP addresses.
 \subsection{Identifying Bidirectional Censorship}
 \label{sec:methodology:censorship}
 
-We focus on identifying bidirectional censorship via injected responses to
-ingress traffic. \textbf{\Cref{fig:india}} shows how bidirectional censorship can be measured from vantage points outside the censor state in question. For this study, we label all responses to probes we do not expect a response from as a bidirectional censorship response. In the context of this study, we do not expect any responses from IP addresses that are not live, regardless of the (protocol,domain) pair we query them for. We conduct this measurement for several different protocols that are known (or suspected) of being censored. For each experiment, we stripe IP by domain such that each domain is sent to all IPs before any individual IP is given a second domain. This is done to prevent our scanner from overwhelming any individual target address.
+
+\textbf{\Cref{fig:india}}
+shows a high-level overview of measuring bidirectional censorship from a single vantage point
+outside the censoring country.
+For each domain in our test list, we send a probe to each IP address, for several different protocols,
+and observe if we receive an (injected) response. If we receive a response for
+non-control domains (and no response for the control domains), we mark the IP
+address as likely censored. For instance, sending a DNS request for
+\texttt{youtube.com} to an IP address
+in China usually results in receiving an injected DNS response from China's
+Great Firewall, while sending a query for an uncensored domain we would expect
+no response.
+
+For each experiment, we send a request for a given domain to each IP in our
+3.5~million selected IPs before moving to the next domain. This avoids
+overwhelming any individual IP address, as each IP receives a probe
+approximately every 9~seconds during our scans.
+
+\subsubsection{Protocols}
+We scan for censorship in several protocols, including DNS, HTTP, TLS, and QUIC.
+
+\paragraph{DNS} For each domain from our list, we craft a DNS query for both A
+and AAAA records. We note that each of these queries can be sent to an IPv4 or
+IPv6 address, allowing us to observe if the censor can process IPv6 packets or
+handles AAAA records properly.
+
+\paragraph{HTTP} Plaintext HTTP is often censored if the Host header contains 
+a censored domain. We craft a simple GET request with the domain in the Host
+header in order to trigger censorship. % TODO: user agent? Other headers?
+Since HTTP is sent over TCP, censors may track connection
+state, expecting to see at least the client's side of a TCP handshake before a
+request in order for the censor to inject a response~\cite{bock2021your}. For
+this reason, we send two kinds of HTTP probes. First, we send a plain HTTP
+request in a single TCP packet with arbitrary sequence and acknowledgement
+numbers. This will trigger \emph{stateless} censors that are only watching for
+the presence of HTTP requests, regardless of surrounding connection state. In a
+second experiment, we send packets that correspond to a client's side of a TCP
+connection, namely the \texttt{SYN}, \texttt{ACK}, and finally \texttt{PSH+ACK}
+request packets with appropriate sequence numbers. This experiment will trigger
+injections from \emph{stateful} censors that expect to see evidence of a
+connection before injecting.
+
+\paragraph{TLS} Censors frequently block TLS connections based on the presence
+of censored domains in the Client Hello's Server Name Indication (SNI)
+extension, which indicates the domain the client is requesting in plaintext. We
+craft a TLS Client Hello that resembles that sent by \todo{what do we mimic?}.
+Similarly to HTTP, we send both a single ``stateless'' TLS packet, and a
+separate ``stateful'' \texttt{SYN} / \texttt{ACK} / \texttt{PSH+ACK} sequence
+trigger censors that don't or do track TCP state respectively.
+
+\paragraph{QUIC} QUIC is an encrypted UDP protocol, and like TLS, its first
+packet is a Client Hello that conveys the domain in an SNI extension. Unlike
+TLS, this first packet is encrypted under a secret derived from a
+specification-defined value and the connection ID sent in plaintext. This allows
+a network device (e.g. censor) to decrypt the QUIC Client Hello, but requires an
+understanding of the QUIC specification. To test if censors are censoring QUIC
+or specific domains (and decrypting Client Hello messages), we craft a standard
+QUIC Client Hello message with each domain.
+
+
+
+
+
+%We focus on identifying bidirectional censorship via injected responses to our
+%probes for several protocols.  \textbf{\Cref{fig:india}} shows how bidirectional
+%censorship can be measured from vantage points outside the censor state in
+%question. For our study, we label any responses to probes we do not expect a
+%response from as a bidirectional censorship response. In the context of this
+%study, we do not expect any responses from IP addresses that are not live,
+%regardless of the (protocol,domain) pair we query them for. We conduct this
+%measurement for several different protocols that are known (or suspected) of
+%being censored. For each experiment, we stripe IP by domain such that each
+%domain is sent to all IPs before any individual IP is given a second domain.
+%This is done to prevent our scanner from overwhelming any individual target
+%address.
 % receive responses that we can classify as either expected or characteristic of
 % censorship. We do this for several different protocols that are known (or
 % suspected) to be censored. For each of the following probe types we first
 % conduct a measurement of control domains only to all target addresses. This is
 % followed by a complete measurement in which we send probes containing all
 % sensitive domains with control domains mixed in. For each experiment we stripe
-% IP by domain such that each domain is sent too all IPs before any individual IP
-% is given a second domain. This is done to prevent our scanner from overwhelming
-% any individual target address.
+% IP by domain such that each domain is sent too all IPs before any individual
+% IP is given a second domain. This is done to prevent our scanner from
+% overwhelming any individual target address.
 
 
 \subsubsection{Controlling for responsive targets and residual censorship}
-Due to the breadth of our measurement and the amount of IP addresses we choose as our targets, a subset of these targets are bound to be active IP addresses. Going by our definition of a bidirectional censorship response, this would introduce some false positives into our results (i.e.\ counting a response from a live IP address as a response from the bidirectional censor). Furthermore, controlling for live IP addresses is made more complicated if the censor deploys residual censorship \cite{bock2021your}. Such censors block all subsequent requests, after a sensitive query, for a certain period of time. 
-During this time, requests for control/innocuous domains would also result in a response, thereby increasing false positives.
+We exclude IP addresses from our scans that respond to any of our control
+domains, since this indicates either a host or firewall that is likely blocking
+\emph{all} requests. Typically, this is due to a host being active there,
+potentially sending a \texttt{RST} packet in response to our TCP packets. Since
+our goal is to measure in-network bidirectional censorship, we exclude such
+``live'' hosts from our measurements.
 
-To cater for these two scenarios, we conduct our scans in two phases. During the first phase, we send queries to all the IP addresses in our dateset but only for the control domains described in \Cref{sec:methodology:domains}. As none of these domains should trigger bidirectional censorship (as they should not be present in a censor's block-list), all responses we receive should be from live IP addresses sending back legitimate responses. For the next phase of our experiment, we repeat the experiment but with 1,400 sensitive domains instead. \textbf{We consider all responses from IP addresses that responded only during the second phase as bidirectional censorship responses.}
+A second related issue we consider is \emph{residual
+censorship}~\cite{bock2021your}, where a censor will block a censored request,
+and subsequently block future connections from the same client to the same
+destination for a short time after, even if those future connections or requests
+contained uncensored domains. If we interpret our results naively, residual
+censorship could skew our results, making a domain appear to be censored when in
+reality only a domain probed shortly before it actually was.
+
+Thus, a limitation of our scanning methodology is that we cannot identify which
+domains are blocked by a censor that employs residual censorship. Instead, we
+only attempt to identify which IP addresses likely experience censorship, and
+then at a country or AS level, what fraction of IPs experience censorship.
+In future work, we plan to scan at a slow enough rate or to different IPs in the
+same subnet to avoid the residual censorship issue.
+
+%To account for this, we do not attempt to identify which domains a particular
+%censor blocks, since this would require sending slower or having
+
+
+%Due to the breadth of our measurement and the amount of IP addresses we choose as our targets, a subset of these targets are bound to be active IP addresses. Going by our definition of a bidirectional censorship response, this would introduce some false positives into our results (i.e.\ counting a response from a live IP address as a response from the bidirectional censor). Furthermore, controlling for live IP addresses is made more complicated if the censor deploys residual censorship \cite{bock2021your}. Such censors block all subsequent requests, after a sensitive query, for a certain period of time. 
+%During this time, requests for control/innocuous domains would also result in a response, thereby increasing false positives.
+
+%To cater for these scenarios, we conduct our scans in two phases. During the first phase, we send queries to all the IP addresses in our dateset but only for the control domains described in \Cref{sec:methodology:domains}. As none of these domains should trigger bidirectional censorship (as they should not be present in a censor's block-list), all responses we receive should be from live IP addresses sending back legitimate responses. For the next phase of our experiment, we repeat the experiment but with 1,400 sensitive domains instead. \textbf{We consider all responses from IP addresses that responded only during the second phase as bidirectional censorship responses.}
 
 
 
+\if0
 \subsubsection{TCP}
 While some firewall implementations explicitly look for singular TCP (TLS, HTTP,
 or other) packets that violate their rules, others keep a modest amount of state
@@ -132,10 +276,11 @@ encrypted using an a key derived using an HKDF on our selected connection ID.
 While on-path attackers can decrypt this initial packet and inspect the
 plaintext TLS packet including SNI, they are forced to perform a relatively
 costly HKDF in order to do so.
+\fi
 
 \subsubsection{Tagging}
 
-Similar to the architecture of the zmap scanning tool, our probing architecture
+Similar to the architecture of the ZMap~\cite{zmap} scanning tool, our probing architecture
 uses many threads to craft and send packets and one independent thread to listen
 and ingests responses. One consequence of this architecture is that we must
 maintain a limited amount of state internally for each connection we create.
@@ -143,10 +288,11 @@ While injected responses to DNS probes may include the host name (in the
 response Resource Record) other protocols are not guaranteed to do so. For
 example, the TCP RST packets injected by the GFW in response to a TLS probe with
 a censored SNI will not indicate what domain the original probe included.
-Similar challenges exists for HTTP and Quic probes.
+Similar challenges exist for HTTP and Quic probes.
 
-To solve this problem we employ a tagging system for outgoing packets such that
-we can identify the details of the probe they correlate to and check the
+To solve this problem we ``tag'' outgoing packets in a way that injected
+responses will echo this tag, and allow us to identify the details of the probe
+they correlate to, as well as check the
 validity of the response without tracking the full connection state from start
 to finish.
 
