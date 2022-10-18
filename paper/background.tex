@@ -54,22 +54,18 @@ This allows researchers to study many countries from a single vantage point that
 need not be located in a censoring region.
 
 
-
-
-
-Prior work has observed that packet injection can be
-\emph{bidirectional}, in that a censor will inject responses to a request that
-originates outside the censoring country, as well as from inside.
-For instance, researchers have found
+Prior work has observed that packet injection can be \emph{bidirectional}, in
+that a censor will inject responses to a request that originates outside the
+censoring country, as well as from inside. For instance, researchers have found
 that China's Great Firewall injects DNS responses for censored queries,
-regardless of where they originate~\cite{collateral-dns}.
+regardless of where they originate~\cite{collateral-dns}. This bidirectional
+censorship can be observed from vantage points outside of the country as
+injection is triggered by ingress traffic (as shown by
+Figure~\ref{fig:probeSend}) as well as egress traffic.
 
-Bidirectional censorship can be observed from 
 
-
-
-
-all of which require the ability to
+Blocking access to Internet content can occur in a variety of ways and at
+different layers of the networking stack, all of which require the ability to
 monitor network traffic passing through the censor's borders. The simplest and
 most common approaches are: (1) IP-based blocking in which a censor maintains
 blocklists of IP addresses and prevent connections to these IP addresses; (2)
