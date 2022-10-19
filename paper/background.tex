@@ -33,8 +33,8 @@ different layers of the networking stack. Most commonly, censors employ IP-based
 blocking and packet injection to prevent access to censored content and
 resources. Censors inspect network traffic passively, and inject (spoofed) responses to
 DNS, TLS, HTTP, and other requests for censored
-content~\cite{lowe2007great,hoang2021great,quack,xu2011internet,aryan2013internet,chai2019importance,elemnhorst2021web,elmenhorst2022quic}.
-
+content~\cite{lowe2007great,hoang2021great,quack,xu2011internet,aryan2013internet,chai2019importance,elemnhorst2021web}.
+% ,elmenhorst2022quic - quic censorship survey
 
 While censors typically deploy censorship mechanisms on the edge of their
 network~\cite{xu2011internet} with the goal of blocking requests for users
@@ -184,6 +184,7 @@ prevent connections. For example, the GFW has been seen to inject TCP RST
 packets in response to TLS {\tt ClientHello} packets with a blocklisted domain
 name in the SNI extension~\cite{}.
 
+\if{0}
 {\bf Quic} is a reliable transport layer protocol built on UDP that provides
 encryption by default, faster connection establishment, and much
 more~\cite{RFC9000}. Quic is seeing growing use across the internet~\cite{} as
@@ -213,7 +214,7 @@ new protocols, as such, we expect that some networks may trigger a censorship
 response to our Quic probes independent of the domain we include in the SNI
 field in an attempt to leverage their existing passive censorship infrastructure
 to block the Quic protocol all together.
-
+\fi
 
 \subsection{IPv6} \label{sec:background:ipv6}
 

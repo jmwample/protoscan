@@ -26,10 +26,10 @@ responses from censoring countries around the world.
 %in its block-list of domains to censor. 
 We use The Citizen Lab's~\cite{TheCitiz6:online} domain test
 list~\cite{testlist}, which includes domains that are known to be blocked by
-many censors. We use the global test list for our measurements, rather than
-country-specific lists, to keep our experiments consistent across countries.
-This list contains approximately 1400 domains.\todo{How many exactly? What date
-was it downloaded?}
+many censors. We use the global test list (composed of 1397 unique domains) for
+our measurements, rather than country-specific lists, to keep our experiments
+consistent across countries.
+%\todo{How many exactly? What date was it downloaded?}
 
 %maintains a list of domains \cite{testlist} which are known to be present in the
 %block-lists of many censors. These lists contain country-specific domains
@@ -101,7 +101,8 @@ chosen IP addresses are routable and lower the chance of this type of false
 negative result we chose IP addresses only from the announced prefixes of each
 allocation. We used the \textit{University of Oregon Route Views Project}
 \cite{RouteVie20:online} to get all the announced prefixes for each of the
-allocated IP block, as of \todo{What date did we download this?}. This resulted in a total of 313k IPv4 and 40k IPv6 prefixes.
+allocated IP block, as of \todo{What date did we download this?}. This resulted
+in a total of 295,385 IPv4 and 39,572 IPv6 prefixes representing 186 countries.
 
 
 %could simplify or cut - we choose 10 addresses randomly from each prefix,
@@ -113,23 +114,21 @@ impossible for IPv6. Second, our aim is to test for on path censorship on the
 penultimate hop and not necessarily reach the end hosts themselves. This
 technique allows us to test for bidirectional censorship while maintaining the
 breadth of our measurements. Choosing 10 addresses from each of the announced
-prefix in our allocation dataset results in over 3.5 million IP addresses.
+prefix in our allocation dataset results in over 3.3 million IP addresses.
 
 \subsection{Identifying Bidirectional Censorship}
 \label{sec:methodology:censorship}
 
 
-\textbf{\Cref{fig:india}}
-shows a high-level overview of measuring bidirectional censorship from a single vantage point
-outside the censoring country.
-For each domain in our test list, we send a probe to each IP address, for several different protocols,
-and observe if we receive an (injected) response. If we receive a response for
-non-control domains (and no response for the control domains), we mark the IP
-address as likely censored. For instance, sending a DNS request for
-\texttt{youtube.com} to an IP address
-in China usually results in receiving an injected DNS response from China's
-Great Firewall, while sending a query for an uncensored domain we would expect
-no response.
+\textbf{\Cref{fig:probeSend}} shows a high-level overview of measuring
+bidirectional censorship from a single vantage point outside the censoring
+country. For each domain in our test list, we send a probe to each IP address,
+for several different protocols, and observe if we receive an (injected)
+response. If we receive a response for non-control domains (and no response for
+the control domains), we mark the IP address as likely censored. For instance,
+sending a DNS request for \texttt{youtube.com} to an IP address in China usually
+results in receiving an injected DNS response from China's Great Firewall, while
+sending a query for an uncensored domain we would expect no response.
 
 For each experiment, we send a request for a given domain to each IP in our
 3.5~million selected IPs before moving to the next domain. This avoids
@@ -137,7 +136,7 @@ overwhelming any individual IP address, as each IP receives a probe
 approximately every 9~seconds during our scans.
 
 \subsubsection{Protocols}
-We scan for censorship in several protocols, including DNS, HTTP, TLS, and QUIC.
+We scan for censorship in several protocols, including DNS, HTTP, and TLS.
 
 \paragraph{DNS} For each domain from our list, we craft a DNS query for both A
 and AAAA records. We note that each of these queries can be sent to an IPv4 or
@@ -163,11 +162,14 @@ connection before injecting.
 \paragraph{TLS} Censors frequently block TLS connections based on the presence
 of censored domains in the Client Hello's Server Name Indication (SNI)
 extension, which indicates the domain the client is requesting in plaintext. We
-craft a TLS Client Hello that resembles that sent by \todo{what do we mimic?}.
-Similarly to HTTP, we send both a single ``stateless'' TLS packet, and a
-separate ``stateful'' \texttt{SYN} / \texttt{ACK} / \texttt{PSH+ACK} sequence
-trigger censors that don't or do track TCP state respectively.
+craft a TLS Client Hello resembling that sent by very few other tls
+implementations - we note that no widespread blocklist (or allowlist) of tls
+fingerprints had been applied by censors to general TLS traffic. Similarly to
+HTTP, we send both a single ``stateless'' TLS packet, and a separate
+``stateful'' \texttt{SYN} / \texttt{ACK} / \texttt{PSH+ACK} sequence to trigger
+censors that don't or do track TCP state respectively.
 
+\if{0}
 \paragraph{QUIC} QUIC is an encrypted UDP protocol, and like TLS, its first
 packet is a Client Hello that conveys the domain in an SNI extension. Unlike
 TLS, this first packet is encrypted under a secret derived from a
@@ -176,9 +178,7 @@ a network device (e.g. censor) to decrypt the QUIC Client Hello, but requires an
 understanding of the QUIC specification. To test if censors are censoring QUIC
 or specific domains (and decrypting Client Hello messages), we craft a standard
 QUIC Client Hello message with each domain.
-
-
-
+\fi
 
 
 %We focus on identifying bidirectional censorship via injected responses to our
@@ -288,7 +288,7 @@ While injected responses to DNS probes may include the host name (in the
 response Resource Record) other protocols are not guaranteed to do so. For
 example, the TCP RST packets injected by the GFW in response to a TLS probe with
 a censored SNI will not indicate what domain the original probe included.
-Similar challenges exist for HTTP and Quic probes.
+Similar challenges exist for HTTP probes.
 
 To solve this problem we ``tag'' outgoing packets in a way that injected
 responses will echo this tag, and allow us to identify the details of the probe
@@ -308,6 +308,7 @@ thread to quickly validate responses by checking:
 CRC32(PORT_{dst},ADDR_{src}) \stackrel{?}{=} SEQ - Len
 \end{gather*}
 
+\if{0}
 For Quic responses that either return garbage or change the connection ID for
 the server initial packet we need to have access to the 8 byte connection ID
 sent in our probe. To make sure this is always available we set the source port
@@ -318,7 +319,7 @@ connection ID by computing the following for incoming packets.
 \begin{gather*}
 Conn\_ID = CRC64_{ECMA}(PORT_{dst},ADDR_{src})
 \end{gather*}
-
+\fi
 
 \subsection{Ethics}\label{sec:methodology:ethics}
 
