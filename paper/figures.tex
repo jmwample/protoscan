@@ -1215,3 +1215,44 @@ Anguilla (AI)         &     1  & \cellcolor{red5}  25.9\% & \cellcolor{green0} 1
     \label{fig:allocsizes}
     \end{figure*}
 }
+
+
+\newcommand{\PrevalenceGeneral}{\begin{table*}
+\centering
+\begin{tabular}{|c|l|l|c|l|c|l|} 
+\hline
+\multicolumn{1}{|l|}{\diagbox{\textbf{Country}}{\textbf{Protocol}}} & \textbf{DNS-A}                    & \textbf{DNS-AAAA}                 & \multicolumn{1}{l|}{\textbf{HTTP (stateful)}} & \textbf{HTTP}                    & \multicolumn{1}{l|}{\textbf{TLS (stateful)}} & \textbf{TLS}                      \\ 
+\hline
+\textbf{China}                                                      & \multicolumn{1}{c|}{\RIGHTcircle} & \multicolumn{1}{c|}{\RIGHTcircle} & \CIRCLE                                       & \multicolumn{1}{c|}{\LEFTcircle} & \CIRCLE                                      & \multicolumn{1}{c|}{\LEFTcircle}  \\ 
+\hline
+\textbf{Iran}                                                       & \multicolumn{1}{c|}{\CIRCLE}      & \multicolumn{1}{c|}{\CIRCLE}      & \CIRCLE                                       & \multicolumn{1}{c|}{}            & \RIGHTcircle                                 & \multicolumn{1}{c|}{}             \\ 
+\hline
+\textbf{Uzbekistan}                                                 &                                   &                                   & \CIRCLE                                       &                                  & \CIRCLE                                      &                                   \\ 
+\hline
+\textbf{Oman}                                                       &                                   &                                   & \CIRCLE                                       & \multicolumn{1}{c|}{\CIRCLE}     & \CIRCLE                                      &                                   \\ 
+\hline
+\textbf{Morocco}                                                    &                                   &                                   & \LEFTcircle                                   &                                  & \multicolumn{1}{l|}{}                        &                                   \\ 
+\hline
+\textbf{Bangladesh}                                                 &                                   &                                   & \CIRCLE                                       & \multicolumn{1}{c|}{\CIRCLE}     & \multicolumn{1}{l|}{}                        &                                   \\ 
+\hline
+\textbf{Tanzania}                                                   &                                   &                                   & \LEFTcircle                                   & \multicolumn{1}{c|}{\LEFTcircle} & \multicolumn{1}{l|}{}                        &                                   \\ 
+\hline
+\textbf{Kuwait}                                                     &                                   &                                   & \LEFTcircle                                   &                                  & \multicolumn{1}{l|}{}                        &                                   \\ 
+\hline
+\textbf{Libya}                                                      &                                   &                                   & \CIRCLE                                       & \multicolumn{1}{c|}{\CIRCLE}     & \CIRCLE                                      &                                   \\ 
+\hline
+\textbf{Pakistan}                                                   &                                   &                                   & \CIRCLE                                       &                                  & \CIRCLE                                      &                                   \\ 
+\hline
+\textbf{Lebanon}                                                    &                                   &                                   & \LEFTcircle                                   &                                  & \LEFTcircle                                  &                                   \\ 
+\hline
+\textbf{Turkey}                                                     &                                   &                                   & \LEFTcircle                                   &                                  & \multicolumn{1}{l|}{}                        &                                   \\
+\hline
+\end{tabular}
+\caption{\textbf{\textbf{Global view of bidirectional censorship broken down by protocol}\,---\,}
+        For each country in row \textit{i} and for each protocol in column \textit{j}, 
+        \CIRCLE - represnts the presence of bidirectional censorship for IPv4 and IPv6
+        \LEFTcircle - represnts the presence of bidirectional censorship for IPv4 only
+        \RIGHTcircle - represnts the presence of bidirectional censorship for IPv6 only
+    }
+\label{fig:prevalencegeneral}
+\end{table*}}

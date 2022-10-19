@@ -1,46 +1,45 @@
 \section{Prevalence of Bidirectional Censorship}
+\PrevalenceGeneral
 \label{sec:prevalence}
-\para{Overview.} In this section, we focus on \emph{providing a high-level
-understanding on the prevalence of DNS censorship on IPv4 and IPv6 networks}.
-Specifically, we measure the global prevalence of DNS censorship that occur in
-the following four cases:
-%
-(1) a DNS {\tt A} query is sent over IPv4,
-(2) a DNS {\tt AAAA} query is sent over IPv4,
-(3) a DNS {\tt A} query is sent over IPv6, and
-(4) a DNS {\tt AAAA} query is sent over IPv6.
+\para{Overview.} In this section, we focus on \emph{providing an overview of the bidirectional censorship we observe for the protocols discussed in \Cref{sec:methodology:censorship}, broken down by countries we observe it in}.
+For each country and protocol pair (for which bidirectional censorship is observed), we further break down the results by whether bidirectional censorship was observed for:
+\textbf{(1)} Both, IPv4 and IPv6
+\textbf{(2)} Only IPv4
+\textbf{(3)} Only IPv6.
+\Cref{fig:prevalencegeneral} illustrates all of the breakdowns discussed above.  
+
+\subsection{Prevalence of bidirectional censorship by protocol}
+\label{sec:prevalence:proto}
+For each of the 200k countries in our dataset and each of the protocols we tested (described in \Cref{sec:methodology:censorship}), we send a query to each IP from each allocation we picked (described in \Cref{subsec:selecting-ips}) for all 1400 domains (described in \Cref{sec:methodology:domains}). \textbf{We label a country as bidirectionally censoring a protocol over an IP version if we observe $> 20\%$ of the IPs (for the specific IP version) in the country as being bidirectionally censored.}
+
+\para{DNS}
+We tested bidirectional censorship of both, DNS-A and DNS-AAAA, for all 200 countries in our dataset. We observed only two countries to be bidirectionally censoring DNS queries; China and Iran. Iran censored $>70\%$ of all IPv4 addresses for DNS-A/AAAA and $>50\%$ of all IPv6 addresses for DNS-A/AAAA. On the other hand, China censors $>65\%$ of all IPv6 addresses for DNS-A/AAAA, but does not seem to censor DNS over IPv4.  
+
+\para{HTTP}
+HTTP was the most bidirectionally censored protocol. We observed bidirectional censorship of HTTP-stateful in 12 countries (and HTTTP-stateless in only 5 of these 12 countries). All of the 12 countries censor HTTP-stateful over IPv4, however, 5 of these countries do not censor HTTP-stateful over IPv6. For the 5 countries, that censor HTTP-stateless, all 5 censor over IPv4 but 2 of them do not censor over IPv6. 
+
+\para{TLS}
+We observed bidirectional TLS censorship in 7 countries. For these 7 countries, all censor TLS-stateful, however, only China censors TLS-stateless (that too only over IPv4). 5 of these countries censor TLS-stateful over both, IPv4 and IPv6, however Iran only censors TLS-stateless over IPv6 and Lebanon only does it over IPv4. 
+
+
+\subsection{Case Studies}
+\label{sec:prevalence:case}
+
+\para{Tanzania}
+
+\para{Russia}
+% Specifically, we measure the global prevalence of DNS censorship that occur in
+% the following four cases:
+% %
+% (1) a DNS {\tt A} query is sent over IPv4,
+% (2) a DNS {\tt AAAA} query is sent over IPv4,
+% (3) a DNS {\tt A} query is sent over IPv6, and
+% (4) a DNS {\tt AAAA} query is sent over IPv6.
 %
 % \LEFTCIRCLE
-While much of prior work has focused on case (1), the increased adoption of
-IPv6 necessitates the analysis of cases (2-4) which are provided in our work.
-%
-In each case, we use our collected dataset (\cf \Cref{sec:methodology}) to
-summarize the base rate of censorship.
+% While much of prior work has focused on case (1), the increased adoption of
+% IPv6 necessitates the analysis of cases (2-4) which are provided in our work.
+% %
+% In each case, we use our collected dataset (\cf \Cref{sec:methodology}) to
+% summarize the base rate of censorship.
 
-\begin{table*}
-\centering
-\caption{Protocols censored bidirectionally by country}
-\begin{tabular}{|c|l|l|l|l|l|l|} 
-\hline
-\multicolumn{1}{|l|}{\diagbox{\textbf{Country}}{\textbf{Protocol}}} & \multicolumn{1}{c|}{\textbf{DNS-A}} & \multicolumn{1}{c|}{\textbf{DNS-AAAA}} & \multicolumn{1}{c|}{\textbf{HTTP (stateful)}} & \multicolumn{1}{c|}{\textbf{HTTP}} & \multicolumn{1}{c|}{\textbf{TLS (stateful)}} & \multicolumn{1}{c|}{\textbf{TLS}}  \\ 
-\hline
-\textbf{China}                                                      & \CIRCLE                             & \CIRCLE                                & \CIRCLE                                       & \CIRCLE                            & \CIRCLE                                      & \CIRCLE                            \\ 
-\hline
-\textbf{Iran}                                                       & \CIRCLE                             & \CIRCLE                                & \CIRCLE                                       &                                    &                                              &                                    \\ 
-\hline
-\textbf{Uzbekistan}                                                 &                                     &                                        & \CIRCLE                                       &                                    & \CIRCLE                                      &                                    \\ 
-\hline
-\textbf{Oman}                                                       &                                     &                                        & \CIRCLE                                       & \CIRCLE                            & \CIRCLE                                      &                                    \\ 
-\hline
-\textbf{Bangladesh}                                                 &                                     &                                        & \CIRCLE                                       & \CIRCLE                            &                                              &                                    \\ 
-\hline
-\textbf{Pakistan}                                                   &                                     &                                        & \CIRCLE                                       &                                    & \CIRCLE                                      &                                    \\ 
-\hline
-\textbf{Tanzania}                                                   &                                     &                                        & \LEFTcircle                                   & \LEFTcircle                        &                                              &                                    \\ 
-\hline
-\textbf{Morocco}                                                    &                                     &                                        & \LEFTcircle                                   & \LEFTcircle                        & \LEFTcircle                                  & \LEFTcircle                        \\ 
-\hline
-\textbf{Kuwait}                                                     &                                     &                                        & \LEFTcircle                                   &                                    &                                              &                                    \\
-\hline
-\end{tabular}
-\end{table*}
