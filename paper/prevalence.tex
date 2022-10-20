@@ -10,7 +10,13 @@ For each country and protocol pair (for which bidirectional censorship is observ
 
 \subsection{Prevalence of bidirectional censorship by protocol}
 \label{sec:prevalence:proto}
-For each of the 186 countries in our dataset and each of the protocols we tested (described in \Cref{sec:methodology:censorship}), we send a query to each IP from each allocation we picked (described in \Cref{subsec:selecting-ips}) for all 1400 domains (described in \Cref{sec:methodology:domains}). \textbf{We label a country as bidirectionally censoring a protocol over an IP version if we observe $> 20\%$ of the IPs (for the specific IP version) in the country as being bidirectionally censored.}
+For each of the 186 countries in our dataset and each of the protocols we tested
+(described in \Cref{sec:methodology:censorship}), we send a query to each IP
+from each allocation we picked (described in \Cref{subsec:selecting-ips}) for
+all 1400 domains (described in \Cref{sec:methodology:domains}). \textbf{We label
+a country as bidirectionally censoring a protocol over an IP version if we
+observe $> 20\%$ of the IPs (for the specific IP version) in the country as
+being bidirectionally censored.}
 
 \para{DNS}
 We tested bidirectional censorship of both, DNS-A and DNS-AAAA, for all 200 countries in our dataset. We observed only two countries to be bidirectionally censoring DNS queries; China and Iran. Iran censored $>70\%$ of all IPv4 addresses for DNS-A/AAAA and $>50\%$ of all IPv6 addresses for DNS-A/AAAA. On the other hand, China censors $>65\%$ of all IPv6 addresses for DNS-A/AAAA, but does not seem to censor DNS over IPv4.  
@@ -26,9 +32,26 @@ We observed bidirectional TLS censorship in 7 countries. For these 7 countries, 
 \label{sec:prevalence:case}
 
 \para{China}
-censors bidirectionally for all 3 protocols that we tested, namely, DNS, HTTP and TLS. We queried a total of 104k IPv6 and 91k IPv4 addresses in China. For stateful HTTP and stateful TLS, we received a censored response from  $>73\%$ of IPv4 addresses and $66>\%$ of IPv6 addresses. However, for the stateless counterparts of these protocols, we received a lot less censored responses. For HTTP and TLS stateless protocols, we received censored responses from only 22\% of IPv4 addresses and 8\% from IPv6 addresses. For all the tested protocols, except stateless HTTP, a majority ($>95\%$) of the censored responses we received were \textit{RST} or \textit{RST + ACK} packets (for connection tear down). However for stateless HTTP, $>80\%$ of the censored responses we received were HTTP injections. {\color{red} Add analysis of what the blockpages said and what allocs they belonged to (previous investigation revealed most of them were from cloud providers). Is that analysis needed?}.
+censors bidirectionally for all 3 protocols that we tested, namely, DNS, HTTP and TLS. We queried a total of 104k IPv6 and 91k IPv4 addresses in China. For stateful HTTP and stateful TLS, we received a censored response from  $>73\%$ of IPv4 addresses and $66>\%$ of IPv6 addresses. However, for the stateless counterparts of these protocols, we received a lot less censored responses. For HTTP and TLS stateless protocols, we received censored responses from only 22\% of IPv4 addresses and 8\% from IPv6 addresses. For all the tested protocols, except stateless HTTP, a majority ($>95\%$) of the censored responses we received were \textit{RST} or \textit{RST + ACK} packets (for connection tear down). However for stateless HTTP, $>80\%$ of the censored responses we received were HTTP injections.
 
-We also found that for DNS-A and DNS-AAAA queries, China censors $66>\%$ of IPv6 addresses but only $15\%$ of IPv4 addresses. However, from some of our preliminary experiments, we observed that the percentage of IPs that received a censored response were roughly equal for IPv4 and IPv6. To test whether the discrepancy in our final results was from an architectural change in how China censors DNS for IPv4, we performed a couple follow-up experiments. Firstly, we wanted to test whether we observe this discrepancy due to throttling because of the high rate at which we were sending packets. To this end {\color{red} Details from Jack's experiment}. Second, we wanted to test whether the IP address we were conducting these tests from was added to a block-list. {\color{red} Details from Eric's follow-up experiment}
+% Todo: future
+% {\color{red} Add analysis of what the blockpages said and what allocs they belonged to (previous investigation revealed most of them were from cloud providers). Is that analysis needed?}.
+
+We found that for DNS probes carrying either A or AAAA queries China censors at
+a similar rate, $87.2\%$ of the tested IPv4 addresses and $99.3\%$ of IPv6
+addresses. We note that there were no responses to our DNS control probes for
+IPv6 in China.
+
+
+Interestingly, one of the IPs of a vantage that we were using to make
+measurements ended up on a Chinese blocklist between experiments. This resulted
+in reduced rates of censorship responses, with the most significant impact on
+IPv4. DNS responses for IPv4 were reduced to $15\%$ of measured addresses, while
+IPv6 was only reduced to $66\%$. This suggested either that the blocking
+mechanisms for IPv4 are independent or that their blocklists are de-synced.
+\todo{effects on other protocols?}
+
+% but only $15\%$ of IPv4 addresses. However, from some of our preliminary experiments, we observed that the percentage of IPs that received a censored response were roughly equal for IPv4 and IPv6. To test whether the discrepancy in our final results was from an architectural change in how China censors DNS for IPv4, we performed a couple follow-up experiments. Firstly, we wanted to test whether we observe this discrepancy due to throttling because of the high rate at which we were sending packets. To this end {\color{red} Details from Jack's experiment}. Second, we wanted to test whether the IP address we were conducting these tests from was added to a block-list. {\color{red} Details from Eric's follow-up experiment}
 
   
 \para{Iran}
