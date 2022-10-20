@@ -4,17 +4,18 @@
 Internet censorship is a global problem that affects over half the world's
 population. Censors rely on sophisticated network middleboxes to inspect and
 block traffic, employing IP-based blocking and packet injection to prevent
-access to censored content and resources. Censors commonly inspect network traffic
-passively, and inject (spoofed) responses to DNS, TLS, HTTP, and other protocol
+access to censored content and resources. A common technique used by censors involves
+inspecting network traffic
+passively, and injecting (spoofed) responses to DNS, TLS, HTTP, or other protocol
 requests for censored
 content~\cite{lowe2007great,hoang2021great,vandersloot2018quack,xu2011internet,aryan2013internet,chai2019importance,elmenhorst2021web}.
 
 
-Prior work has extensively studied this type of censorship, both for specific
-%A core component of Internet censorship is DNS blocking, and
-%prior work has extensively studied how DNS censorship occurs, both for specific
-countries~\cite{Anonymous2020:TripletCensors,USESEC21:GFWatch} and
-globally~\cite{kuhrer2015going,dagon2008corrupted,pearce2017global,scott2016satellite}.
+Prior work has extensively studied this type of censorship
+globally~\cite{niaki2020iclab,sundara2020censored,filasto2012ooni,razaghpanah2016exploring,kuhrer2015going,dagon2008corrupted,pearce2017global,scott2016satellite}
+%
+and for individual
+countries~\cite{Anonymous2020:TripletCensors,USESEC21:GFWatch,aryan2013internet,ramesh2020decentralized,yadav2018light,gebhart2017internet,nabi2013anatomy}.
 %TODO: add other studies that are measuring any kind of injection, not just DNS
 %
 %\cite{kuhrer2015going,Anonymous2020:TripletCensors,USESEC21:GFWatch,dagon2008corrupted,pearce2017global,scott2016satellite}.
@@ -29,29 +30,62 @@ difficult~\cite{murdock2017target}, owing to its impossible-to-enumerate 128-bit
 address space.
 %
 
-An IPv4-only view is problematic, because
-IPv6 is becoming more widely deployed and used worldwide: nearly 35\% of current Internet
-traffic is being served over native IPv6 connections~\cite{Google-IPv6}, and it
-is unclear if the same censorship mechanisms we know about for IPv4 traffic
-apply to the growing IPv6 traffic.
-There is reason to believe it could be
-different, as prior work studying IPv6 in non-censorship contexts has shown it has
+An IPv4-only view of censorship is problematic, because
+IPv6 is becoming more widely deployed and used worldwide: over 35\% of current Internet
+traffic is being served over native IPv6 connections~\cite{Google-IPv6} (and exceeds
+50\% in some countries known to censor such as India~\cite{akamai-ipv6}).
+However, it
+is unclear if the same censorship mechanisms we know about in IPv4 traffic
+also apply to the growing IPv6 Internet.
+There is also reason to believe it could be
+different, as prior work studying IPv6 in non-censorship contexts has shown IPv6 has
 fundamentally different network performance~\cite{Dhamdhere-IMC2012}, security
 policies~\cite{Czyz-NDSS2016}, and topologies~\cite{Czyz-SIGCOMM2014}
 compared to the traditional IPv4 Internet.
 %
 
-In this paper, we perform the first comprehensive global measurement of
-censorship on the IPv6 Internet, and compare it to IPv4 censorship. We find that
-some censors such as Tanzania only support censorship of their IPv4 Internet,
-but many others including China and Iran support both IPv4 and IPv6 censorship.
-However, even censors that support both networks may have subtle differences
-between the two: the censorship may apply to fewer networks, apply to different
+In this paper, we perform the first (to our knowledge) comprehensive global measurement of
+censorship on the IPv6 Internet, and compare it to IPv4 censorship.
+% How we do it
+To study censorship globally on both IPv4 and IPv6 networks, we focus on
+detecting \emph{bidirectional censorship}, which can be easily observed from a
+vantage point outside the country. In this form of censorship, a censor
+passively watches network traffic for censored requests, such as a DNS query
+for a blocked domain. When the censor sees such a request, they inject a response (such as a DNS
+response with an incorrect answer), spoofing the source of the injected
+response,
+as shown in Figure~\ref{fig:probeSend}.
+This type of censorship can be induced and detected from a single
+vantage point outside any censoring
+country~\cite{vanderslooth2018quack,collateral-dns,pearce2017global,scott2016satellite}.
+While this technique does not capture other types of censorship (e.g. IP
+blocking), it provides one view
+of censorship that we can easily apply globally and across network types.
+
+In particular, we randomly sample IP addresses from both IPv4 and IPv6
+allocations, with the goal of finding routed-but-unused addresses in every
+country. This removes the need to scan for active servers, which is difficult in
+IPv6. By looking for unused addresses that don't respond to our control probes,
+we can simply sample addresses that we know route into a country of interest.
+%
+For each IP, we send requests for several protocols (DNS, TLS, and HTTP)
+containing potentially censored domains and observe any injected response. If a
+country has a largely uniform response to censored probes, we can label it as
+censoring for that protocol and network type (IPv4 or IPv6).
+
+\medskip
+% Results
+Our results show that
+some censors such as Tanzania and Turkey only support censorship of
+their IPv4 Internet,
+while others including China and Iran support both IPv4 and IPv6 censorship.
+However, even censors that censor both IPv4 and IPv6 may have subtle differences
+between the two: the censorship may apply to fewer networks, may miss certain
+kinds of tunneling, apply to different
 protocols, or to different domains or resources. These differences may
 potentially be useful to circumvention researchers, providing information about
-the censorship ifrastructure and ways to get around it.
+the censorship infrastructure and ways to get around it.
 
-% TODO more needed...
 
 \if0
 In this paper, we perform the first comprehensive global measurement of DNS
@@ -144,6 +178,7 @@ IP protocol version in \Cref{sec:infrastructure}. We select several case studies
 to highlight in \Cref{sec:cases} before covering related work in
 \Cref{sec:related}. Finally \Cref{sec:discussion} provides discussion and
 contextualization of this work before concluding.
+\fi
 
 % Censorship is bad
 % Censorship measurements don't hurt
