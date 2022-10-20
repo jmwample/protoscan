@@ -1,22 +1,59 @@
 \section{Introduction}\label{sec:intro}
 
-\if{0}
+
 Internet censorship is a global problem that affects over half the world's
 population. Censors rely on sophisticated network middleboxes to inspect and
-block traffic. A core component of Internet censorship is DNS blocking, and
-prior work has extensively studied how DNS censorship occurs, both for specific
+block traffic, employing IP-based blocking and packet injection to prevent
+access to censored content and resources. Censors commonly inspect network traffic
+passively, and inject (spoofed) responses to DNS, TLS, HTTP, and other protocol
+requests for censored
+content~\cite{lowe2007great,hoang2021great,vandersloot2018quack,xu2011internet,aryan2013internet,chai2019importance,elmenhorst2021web}.
+
+
+Prior work has extensively studied this type of censorship, both for specific
+%A core component of Internet censorship is DNS blocking, and
+%prior work has extensively studied how DNS censorship occurs, both for specific
 countries~\cite{Anonymous2020:TripletCensors,USESEC21:GFWatch} and
 globally~\cite{kuhrer2015going,dagon2008corrupted,pearce2017global,scott2016satellite}.
+%TODO: add other studies that are measuring any kind of injection, not just DNS
 %
 %\cite{kuhrer2015going,Anonymous2020:TripletCensors,USESEC21:GFWatch,dagon2008corrupted,pearce2017global,scott2016satellite}.
-These studies generally perform active measurements of DNS resolvers for large
-sets of domains, and identify forged censorship responses from legitimate ones.
+These studies generally perform active measurements that test large
+%of DNS resolvers for large
+sets of domains in requests into censored countries, and identify forged
+censorship responses from legitimate ones.
 %
 Unfortunately, this prior work has focused exclusively on the IPv4 Internet, in
-part because scanning the IPv6 Internet for open resolvers is
+part because scanning the IPv6 Internet for servers is
 difficult~\cite{murdock2017target}, owing to its impossible-to-enumerate 128-bit
 address space.
 %
+
+An IPv4-only view is problematic, because
+IPv6 is becoming more widely deployed and used worldwide: nearly 35\% of current Internet
+traffic is being served over native IPv6 connections~\cite{Google-IPv6}, and it
+is unclear if the same censorship mechanisms we know about for IPv4 traffic
+apply to the growing IPv6 traffic.
+There is reason to believe it could be
+different, as prior work studying IPv6 in non-censorship contexts has shown it has
+fundamentally different network performance~\cite{Dhamdhere-IMC2012}, security
+policies~\cite{Czyz-NDSS2016}, and topologies~\cite{Czyz-SIGCOMM2014}
+compared to the traditional IPv4 Internet.
+%
+
+In this paper, we perform the first comprehensive global measurement of
+censorship on the IPv6 Internet, and compare it to IPv4 censorship. We find that
+some censors such as Tanzania only support censorship of their IPv4 Internet,
+but many others including China and Iran support both IPv4 and IPv6 censorship.
+However, even censors that support both networks may have subtle differences
+between the two: the censorship may apply to fewer networks, apply to different
+protocols, or to different domains or resources. These differences may
+potentially be useful to circumvention researchers, providing information about
+the censorship ifrastructure and ways to get around it.
+
+% TODO more needed...
+
+\if0
 In this paper, we perform the first comprehensive global measurement of DNS
 censorship on the IPv6 Internet. We leverage a recent network measurement
 technique that can discover dual-stack IPv6 open resolvers from their IPv4
@@ -28,13 +65,7 @@ We then use this data to measure the difference in censorship on IPv4 and IPv6.
 %\medskip
 %
 % \paragraph{Why study IPv6 censorship?}
-IPv6 is becoming more widely deployed, with nearly 35\% of current Internet
-traffic being served over native IPv6 connections~\cite{Google-IPv6}. However,
-IPv6 has fundamentally different performance
-characteristics~\cite{Dhamdhere-IMC2012}, network security
-policies~\cite{Czyz-NDSS2016}, and network topologies~\cite{Czyz-SIGCOMM2014}
-compared to the traditional IPv4 Internet.
-%
+
 While it may seem that censors either do or don't support detecting and
 censoring IPv6 DNS in an all-or-nothing fashion, we find that there is a
 tremendous range of how well a censor blocks in IPv6 compared to IPv4.
@@ -113,7 +144,6 @@ IP protocol version in \Cref{sec:infrastructure}. We select several case studies
 to highlight in \Cref{sec:cases} before covering related work in
 \Cref{sec:related}. Finally \Cref{sec:discussion} provides discussion and
 contextualization of this work before concluding.
-\fi
 
 % Censorship is bad
 % Censorship measurements don't hurt
