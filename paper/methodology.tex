@@ -280,15 +280,15 @@ costly HKDF in order to do so.
 
 \subsubsection{Tagging}
 
-Similar to the architecture of the ZMap~\cite{zmap} scanning tool, our probing architecture
-uses many threads to craft and send packets and one independent thread to listen
-and ingests responses. One consequence of this architecture is that we must
-maintain a limited amount of state internally for each connection we create.
-While injected responses to DNS probes may include the host name (in the
-response Resource Record) other protocols are not guaranteed to do so. For
-example, the TCP RST packets injected by the GFW in response to a TLS probe with
-a censored SNI will not indicate what domain the original probe included.
-Similar challenges exist for HTTP probes.
+Similar to the architecture of the ZMap~\cite{Durumeric13zmap} scanning tool,
+our probing architecture uses many threads to craft and send packets and one
+independent thread to listen and ingests responses. One consequence of this
+architecture is that we must maintain a limited amount of state internally for
+each connection we create. While injected responses to DNS probes may include
+the host name (in the response Resource Record) other protocols are not
+guaranteed to do so. For example, the TCP RST packets injected by the GFW in
+response to a TLS probe with a censored SNI will not indicate what domain the
+original probe included. Similar challenges exist for HTTP probes.
 
 To solve this problem we ``tag'' outgoing packets in a way that injected
 responses will echo this tag, and allow us to identify the details of the probe
