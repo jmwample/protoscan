@@ -179,3 +179,34 @@ tested showed evidence of censorship.
 % In each case, we use our collected dataset (\cf \Cref{sec:methodology}) to
 % summarize the base rate of censorship.
 
+
+\subsection{Missing countries}
+
+We note that while our bidirectional censorship measurement technique is able to
+be easily applied globally to measure both IPv4 and IPv6 censorship, there are
+notably several countries that we do not observe censorship in, but that prior
+work has identified as censoring. For instance,
+Russia~\cite{ramesh2020decentralized} and India~\cite{singh2020india} both
+censor the protocols we looked for, yet our results suggest very minimal
+censorship there.
+
+We hypothesized this is due these countries censoring in a way that is not
+bidirectional. For instance, in Russia, since censorship is often done at
+individual ISPs close to the end user, the censorship can be done in a way that
+only impacts the users at that ISP. Prior work has shown that much of Russia's
+censorship only applies to connections that originate from within the country,
+making it invisible to our technique~\cite{xue2021throttling}.
+
+To investigate this hypothesis, we compare our results to that from Quack, a
+technique that leverages echo servers in censoring countries to test HTTP (and
+TLS) censorship~\cite{vandersloot2018quack}. Since Quack's censorship-triggering traffic will pass in both
+directions past a censor, it is capable of measuring unidirectional censorship.
+However, since it relies on finding echo servers, it is limited to IPv4
+addresses, since it is infeasible to scan for similar echo servers in IPv6.
+
+Comparing our IPv4 results to that from Quack in Table~TK, we see that for many countries,
+we see significantly lower censorship rates, even in the same subnets that host
+Quack echo servers that see censorship. This implies that much of the missing
+countries (e.g. Russia, India) may be due to the way these countries censor, and
+a limitation of our technique.
+
