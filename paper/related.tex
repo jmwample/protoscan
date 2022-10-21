@@ -1,22 +1,28 @@
 \section{Related Work}\label{sec:related}
 
-There is a significant body of previous work investigating censorship
-strategies using characteristic protocol responses to probes sent from outside
-of the country. In this segment we break down the contributions of those works
-and their relation to the measurement that we perform herein.
+%There is a significant body of previous work investigating censorship
+%strategies using characteristic protocol responses to probes sent from outside
+%of the country. In this segment we break down the contributions of those works
+%and their relation to the measurement that we perform herein.
 
-\subsection{Regional or global measurements of Bidirectional censorship.}
+%\subsection{Regional or global measurements of Bidirectional censorship.}
 
-Censorship strategies are not universal and each censor is unique to some
-degree. Targeted measurement studies contribute to a better understanding of
-block-list infrastructure ~\cite{ramesh2020decentralized, USESEC21:GFWatch} and
-explain blocking phenomena~\cite{global2002great, Anonymous2020:TripletCensors}.
-Global studies provide high level view on the use of DNS censorship
-internationally providing context and and understanding of prevalence to
-specific censorship techniques~\cite{vandersloot2018quack, scott2016satellite,
-pearce2017global, sundara2020censored, niaki2020iclab}. Our work performs a
-global measurement of DNS, HTTP, and TLS censorship through the lens of the
-differences in IPv4 and IPv6 censorship deployments.
+%Censorship strategies are not universal and each censor is unique to some
+%degree.
+Prior targeted censorship measurement studies contribute to a better understanding of
+block-list infrastructure~\cite{ramesh2020decentralized, USESEC21:GFWatch} and
+have helped to explain blocking phenomena~\cite{global2002great, Anonymous2020:TripletCensors}.
+Meanwhile, global studies have also yielded higher-level views on the use of DNS censorship
+around the world
+%providing context and and understanding of prevalence to
+%specific censorship techniques~\
+\cite{vandersloot2018quack, scott2016satellite,
+pearce2017global, sundara2020censored, niaki2020iclab}. However, all of these
+studies have required Internet-wide scans, that are only feasible on IPv4. Thus,
+there is a gap of knowledge when it comes to IPv6 censorship. Our work performs a
+global measurement of DNS, HTTP, and TLS censorship through the lens of
+comparing the
+differences in IPv4 and IPv6 censorship deployments around the world.
 
 % \para{DNS}
 
@@ -24,10 +30,13 @@ differences in IPv4 and IPv6 censorship deployments.
 
 % \para{HTTP}
 
-\subsection{IPv6 censorship measurement.}
-Previous censorship studies primarily focus on measurements in the context of
-IPv4. However, there have been several efforts to explicitly incorporate IPv6.
-In March 2020 Hoang \etal began collection of DNS records injected by the Great
+%\subsection{IPv6 censorship measurement.}
+While prior global censorship measurement work has been limited to IPv4, 
+%Previous censorship studies primarily focus on measurements in the context of
+%IPv4. However,
+there have been several efforts to incorporate IPv6 or understand how censors
+deal with IPv6-specific features.
+In March 2020 Hoang \etal collected DNS records injected by the Great
 Firewall in order to classify the addresses provided, block-pages injected, and
 the set of hostnames that receive injections~\cite{USESEC21:GFWatch}. Their
 analysis investigates the commonality of addresses injected by the GFW, finding
@@ -39,9 +48,13 @@ provide a more detailed understanding of IPv6 censorship in China.
 %
 A 2021 investigation of HTTP keyword block-lists associated with the Great
 Firewall found that results are largely the same between IPv4 and
-IPv6~\cite{weinberg2021chinese}. However, the authors note that over IPv6
-connections, the the Firewall failed to apply it's signature temporary 90 second
+IPv6~\cite{weinberg2021chinese} using a single vantage point in China that had
+both IPv4 and IPv6 connectivity. Their results corroborate ours---that China does
+censor over IPv6. However, the authors note that over IPv6
+connections, the the Firewall failed to apply its signature temporary 90~second
 ``penalty box'' blocking subsequent connections between the two hosts described
 by numerous previous studies~\cite{xu2011internet,clayton2006ignoring}. This
-supports our finding that for now the GFW infrastructure supporting IPv4 and
+supports our finding that at least some parts of the GFW's infrastructure supporting IPv4 and
 IPv6 are implemented and/or deployed independently.
+
+
