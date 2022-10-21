@@ -1217,7 +1217,8 @@ Anguilla (AI)         &     1  & \cellcolor{red5}  25.9\% & \cellcolor{green0} 1
 }
 
 
-\newcommand{\PrevalenceGeneral}{\begin{table*}
+\newcommand{\PrevalenceGeneral}{
+  \begin{table*}
     \centering
     \begin{tabular}{|c|cc|cc|cc|cc|cc|cc|}
     \hline
@@ -1237,17 +1238,17 @@ Anguilla (AI)         &     1  & \cellcolor{red5}  25.9\% & \cellcolor{green0} 1
     \textbf{Turkey}                               &    &                                                                                        &    &                                                                                             & 20 &                                                                                             &    &                                     & 13 &                                                                                            &    &                               \\
     \hline
     \end{tabular}
-    \caption{\textbf{\textbf{Global view of bidirectional censorship broken down by protocol}\,---\,}
-            For each country in row \textit{i} and for each protocol in column \textit{j},
-            we represent the percent of vantage points in that country (IPv4 / IPv6) that returned a
-            censorship result. We omit numbers if they are below a threshold for both IPv4 and IPv6, indicating that our bidirectional censorship measurement technique did not observe that protocol blocked in the specified country.
+    \caption{\textbf{Global view of bidirectional censorship by protocol}\,---\,
+        For each country and protocol,
+        we represent the pair of percentage of vantage points in that country (IPv4 and IPv6 respectively) that returned a censorship result.
+    }
+    \label{fig:prevalencegeneral}
+    \end{table*}
+}
 
             %\CIRCLE - represnts the presence of bidirectional censorship for IPv4 and IPv6
             %\LEFTcircle - represnts the presence of bidirectional censorship for IPv4 only
             %\RIGHTcircle - represnts the presence of bidirectional censorship for IPv6 only
-        }
-    \label{fig:prevalencegeneral}
-    \end{table*}}
 
 \newcommand{\TabQuack}{\begin{table}
     \centering
@@ -1269,3 +1270,4 @@ Anguilla (AI)         &     1  & \cellcolor{red5}  25.9\% & \cellcolor{green0} 1
     \label{tab:quack}
     \end{table}
 }
+
