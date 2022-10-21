@@ -127,7 +127,7 @@ packets \textbf{and} HTTP block pages. We did not find evidence of bidirectional
 stateless HTTP censorship in Iran.
 %{\color{red} Previous results show IR was doing bidi for stateless HTTP}.
 
-Among stateful and stateless TLS, we only found evidence of bidirectional censorship of stateful TLS over IPv6. 33\% of all IPv6 addresses sent back a censorship response to our stateful TLS queries. However, preliminary experimentation showed that Iran censors stateless and stateful HTTP and TLS at similar rates {{\color{red} Add analysis from Hammas' follow up experiment of TLS whitelist}. 
+Among stateful and stateless TLS, we only found evidence of bidirectional censorship of stateful TLS over IPv6. 33\% of all IPv6 addresses sent back a censorship response to our stateful TLS queries. However, preliminary experimentation showed that Iran censors stateless and stateful HTTP and TLS at similar rates. %{{\color{red} Add analysis from Hammas' follow up experiment of TLS whitelist}. 
 
 
 \para{Russia}
@@ -207,7 +207,7 @@ directions past a censor, it is capable of measuring unidirectional censorship.
 However, since it relies on finding echo servers, it is limited to IPv4
 addresses, since it is infeasible to scan for similar echo servers in IPv6.
 
-Comparing our IPv4 results to that from Quack in Table~TK, we see that for many countries,
+Comparing our IPv4 results to that from Quack in Table~\ref{tab:quack}, we see that for many countries,
 we see significantly lower censorship rates, even in the same subnets that host
 Quack echo servers that see censorship. This implies that much of the missing
 countries (e.g. Russia, India) may be due to the way these countries censor, and
