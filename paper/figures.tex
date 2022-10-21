@@ -1255,7 +1255,7 @@ Anguilla (AI)         &     1  & \cellcolor{red5}  25.9\% & \cellcolor{green0} 1
     \centering
     \begin{tabular}{l|ccc}
        & Shared & & \\ 
-       & Allocations & Quack & ProtoScan  \\
+       & Allocations & Quack & Our work  \\
     \hline
     CN & 373                & 98\%  & 35\%       \\
     RU & 139                & 26\%  & 3\%        \\
@@ -1266,8 +1266,17 @@ Anguilla (AI)         &     1  & \cellcolor{red5}  25.9\% & \cellcolor{green0} 1
     KW & 1                  & 0\%   & 0\%
 
     \end{tabular}
-    \caption{\textbf{\textbf{Quack Comparison}\,---\,} The table shows the overlap
-            between our work and the Quack echo measurement project.}
+    \caption{\textbf{\textbf{Quack Comparison}\,---\,} We compared our bidirectional
+  censorship measurements to those obtained by
+  Quack~\cite{vandersloot2018quack}. We looked at allocations that had both a
+  Quack echo server and a measurement from our study, and report on the fraction
+  of those vantage points that Quack or we would label as censored.
+  We observe that in many countries, we do
+  not observe bidirectional censorship even in subnets that Quack sees
+  significant blocking. Since Quack can detect censorship that occurs only for
+  connections originating from within the country, this data supports our
+  hypothesis that these countries do not censor bidirectionally.
+  }
     \label{tab:quack}
     \end{table}
 }
