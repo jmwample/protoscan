@@ -86,7 +86,8 @@ We begin by collecting a list of all IP allocations announced by the 5 regional
 registries~\cite{herrbisc56:online} containing 155k IPv4 and
 63k IPv6 allocations from a total of over 200 countries. We use
 MaxMind~\cite{IPGeoloc87:online} to assign the Autonomous System Numbers (ASNs)
-and organization names to each of these allocations. We then filter out
+and organization names to each of these allocations, as well as geolocate each
+IP address to a specific country. We then filter out
 organizations that do not have at least one IPv4 and one IPv6 allocation
 resulting in 71k IPv4 and 20k IPv6 allocations.
 
