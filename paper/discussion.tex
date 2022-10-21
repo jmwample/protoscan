@@ -85,25 +85,61 @@ While we find that a global scan of bidirectional censorship provides a broad
 view of network interference, several open questions and opportunities for
 further investigation still exist.
 
-\para{Censorship Strategies}
-This study is in no way an enumeration of censorship strategies, for example
-HTTP keyword based censorship is a common strategy known to be deployed in
-several nation-state networks. However, the keyword blocklists tend to be more
-regionally specific and significantly larger. At the scale of target addresses
-that we send in this work the number of probes becomes difficult to manage.
+\para{Other Protocols}
+We present results for several protocols well known to be censored at large
+scales around the world, however this study is in no way an enumeration of
+censorship strategies. For example, HTTP keyword based censorship is a common
+strategy known to be deployed in several nation-state networks. However, the
+keyword blocklists tend to be more regionally specific and significantly larger.
+At the scale of target addresses that we send in this work the number of probes
+becomes difficult to manage.
+
+Along with changes relating IP versions the protocols that carry commodity
+traffic change over time, as protocols are updated and improved. To this end we
+did a global measurement of both Quic and DTLS (both of which are UDP variants
+of the TLS protocol) by placing the domain under test in an SNI extension of a
+ClientHello packet equivalent to our TLS probe. Neither protocol showed strong
+signs of censorship relating to the server name.
+
+Our Quic probes received responses from 8233 ($0.27\%$) and 1318 ($0.33\%$)
+addresses respectively for IPv4 and IPv6 respectively. All of the responding
+IPv6 addresses belong to cloud hosting providers Cloudflare, Fastly, and
+NextDNS. A large number of the remaining IPv4 addresses were geolocated to US,
+which is consistent with both the scale of allocations in the US and the
+location of the parties associated with the development of the Quic protocol.
+For DTLS 1396 addresses ($0.04\%$) responded to any probe all of which were in
+IPv4. Most of the responding addresses were in AS 2044 which is associated with
+a company offering hosting/connectivity as a service, and AS 4193 which is
+associated with the State of Washington in the US. For both Quic and DTLS the
+number of addresses that responded to experimental probes, but not control
+probes was so small that it could be attributed to network instability or other
+statistical error. We interpret this as indicative of no current bidirectional
+censorship of either protocol relating to the SNI extension.
+
+
+\para{Circumvention opportunities}
+The incongruity that we find in censorship deployments demonstrates that there
+may be opportunities to leverage the gap to circumvent network based limitations
+on free speech. Censorship efficiency and distribution is not one-to-one between
+IPv4 and IPv6 allowing for potential chosen path attacks for example.
+Furthermore, while not explored in this work it may be possible that protocols
+designed for interim or transition period between IPv4 and IPv6, such as 6-to-4
+tunnelling and teredo, would go unseen by censors.
+
 
 \para{Fingerprinting}
-Given the large number of networks and network-actors that we identify in this
+Given the large number of networks and network-actors that we measure in this
 work we intend to perform a classification of censorship behaviors at the
 protocol level to identify and link common censorship infrastructure and
-identify commonalities where circumvention techniques can be shared.
+implementation commonalities where circumvention techniques can be shared
+laterally.
 
 For target addresses that are identified as having a censor on-path, follow-up
 scans using tools such as geneva~\cite{bock2019geneva} could be done to further
 explore the extent to which censorship can be fingerprinted and circumvented.
 Elements of such a fingerprint would include packet level details like IPID and
 IPTTL of injected packets as well as censorship trigger conditions relating to
-protocol validity elements like flags, checksum validity, and extensions.
+protocol validity elements like flags, checksums, and extensions.
 
 
 \para{Intentional Packet Drops}
@@ -130,13 +166,13 @@ extent to which the ongoing deployment of IPv6 is effected, and shine a light on
 as many censors as possible we develop a custom tool for performing rapid global
 measurements of censorship.
 
-We experimentally find that \red{XX} networks deploy at least one form of
-bidirectional censorship capability, aggregating into \red{N} countries that
-censor at a seemingly national scale. We explore the protocols that each of
-these censors actively interfere in showing that national censorship
-infrastructure differs significantly by the various protocols that are effected,
-stateful-ness of the censor, and the impacts of that censorship on subsequent
-connections. Beyond this we show that multiple national censorship strategies
+We experimentally find that many networks deploy at least one form of
+bidirectional censorship capability. We spotlight four countries that censor at
+a seemingly national scale, and capture measurements implicating several more.
+We explore the protocols that each of these censors actively interfere in
+showing that national censorship infrastructure differs significantly by the
+various protocols that are effected and the stateful-ness of the censorship
+infrastructure. Beyond this we show that multiple national censorship strategies
 have significant differences in the effects on IPv4 and IPv6 connections with
 some demonstrating relatively similar capacity between the two, and some nations
 censoring only one IP version.
