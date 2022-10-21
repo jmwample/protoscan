@@ -114,10 +114,13 @@ China.
 % but only $15\%$ of IPv4 addresses. However, from some of our preliminary experiments, we observed that the percentage of IPs that received a censored response were roughly equal for IPv4 and IPv6. To test whether the discrepancy in our final results was from an architectural change in how China censors DNS for IPv4, we performed a couple follow-up experiments. Firstly, we wanted to test whether we observe this discrepancy due to throttling because of the high rate at which we were sending packets. To this end {\color{red} Details from Jack's experiment}. Second, we wanted to test whether the IP address we were conducting these tests from was added to a block-list. {\color{red} Details from Eric's follow-up experiment}
 
 
-\para{Iran}
-censors bidirectionally for DNS and HTTP. For DNS-A and DNS-AAAA, we observe a
-censored response from $70\%$ of IPv4 addresses and $50\%$ of IPv6 addresses out
-of a total of 17k and 630 addresses respectively. Despite only have a 3-8\% IPv6
+\para{Iran} censors nearly all of the protocols we studied, and supports IPv4 and IPv6
+for most of them. Interestingly, it appears that Iran only blocks TLS bidirectionally
+over IPv6; however during our study Iran made several changes to their routing in response to protests, making it difficult to know if this is related.
+%censors bidirectionally for DNS and HTTP. For DNS-A and DNS-AAAA, we observe a
+%censored response from $70\%$ of IPv4 addresses and $50\%$ of IPv6 addresses out
+%of a total of 17k and 630 addresses respectively. 
+Despite only have a 3-8\% IPv6
 adoption rate~\cite{akamai-ipv6,Google-IPv6}, Iran appears to have a
 fully-functional IPv6
 censorship system. Iran also censors stateful
