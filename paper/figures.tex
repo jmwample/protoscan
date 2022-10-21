@@ -1218,45 +1218,33 @@ Anguilla (AI)         &     1  & \cellcolor{red5}  25.9\% & \cellcolor{green0} 1
 
 
 \newcommand{\PrevalenceGeneral}{\begin{table*}
-\centering
-\begin{tabular}{|c|l|l|c|l|c|l|} 
-\hline
-\multicolumn{1}{|l|}{\diagbox{\textbf{Country}}{\textbf{Protocol}}} & \textbf{DNS-A}                    & \textbf{DNS-AAAA}                 & \multicolumn{1}{l|}{\textbf{HTTP (stateful)}} & \textbf{HTTP}                    & \multicolumn{1}{l|}{\textbf{TLS (stateful)}} & \textbf{TLS}                      \\ 
-\hline
-\textbf{China}                                                      & \multicolumn{1}{c|}{\RIGHTcircle} & \multicolumn{1}{c|}{\RIGHTcircle} & \CIRCLE                                       & \multicolumn{1}{c|}{\LEFTcircle} & \CIRCLE                                      & \multicolumn{1}{c|}{\LEFTcircle}  \\ 
-\hline
-\textbf{Iran}                                                       & \multicolumn{1}{c|}{\CIRCLE}      & \multicolumn{1}{c|}{\CIRCLE}      & \CIRCLE                                       & \multicolumn{1}{c|}{}            & \RIGHTcircle                                 & \multicolumn{1}{c|}{}             \\ 
-\hline
-\textbf{Uzbekistan}                                                 &                                   &                                   & \CIRCLE                                       &                                  & \CIRCLE                                      &                                   \\ 
-\hline
-\textbf{Oman}                                                       &                                   &                                   & \CIRCLE                                       & \multicolumn{1}{c|}{\CIRCLE}     & \CIRCLE                                      &                                   \\ 
-\hline
-\textbf{Morocco}                                                    &                                   &                                   & \LEFTcircle                                   &                                  & \multicolumn{1}{l|}{}                        &                                   \\ 
-\hline
-\textbf{Bangladesh}                                                 &                                   &                                   & \CIRCLE                                       & \multicolumn{1}{c|}{\CIRCLE}     & \multicolumn{1}{l|}{}                        &                                   \\ 
-\hline
-\textbf{Tanzania}                                                   &                                   &                                   & \LEFTcircle                                   & \multicolumn{1}{c|}{\LEFTcircle} & \multicolumn{1}{l|}{}                        &                                   \\ 
-\hline
-\textbf{Kuwait}                                                     &                                   &                                   & \LEFTcircle                                   &                                  & \multicolumn{1}{l|}{}                        &                                   \\ 
-\hline
-\textbf{Libya}                                                      &                                   &                                   & \CIRCLE                                       & \multicolumn{1}{c|}{\CIRCLE}     & \CIRCLE                                      &                                   \\ 
-\hline
-\textbf{Pakistan}                                                   &                                   &                                   & \CIRCLE                                       &                                  & \CIRCLE                                      &                                   \\ 
-\hline
-\textbf{Lebanon}                                                    &                                   &                                   & \LEFTcircle                                   &                                  & \LEFTcircle                                  &                                   \\ 
-\hline
-\textbf{Turkey}                                                     &                                   &                                   & \LEFTcircle                                   &                                  & \multicolumn{1}{l|}{}                        &                                   \\
-\hline
-\end{tabular}
-\caption{\textbf{\textbf{Global view of bidirectional censorship broken down by protocol}\,---\,}
-        For each country in row \textit{i} and for each protocol in column \textit{j}, 
-        \CIRCLE - represnts the presence of bidirectional censorship for IPv4 and IPv6
-        \LEFTcircle - represnts the presence of bidirectional censorship for IPv4 only
-        \RIGHTcircle - represnts the presence of bidirectional censorship for IPv6 only
-    }
-\label{fig:prevalencegeneral}
-\end{table*}}
-
+    \centering
+    \begin{tabular}{|c|cc|cc|cc|cc|cc|cc|}
+    \hline
+    \diagbox{\textbf{Country}}{\textbf{Protocol}} & \multicolumn{2}{c|}{\begin{tabular}[c]{@{}c@{}}\textbf{~ ~DNS~ ~}\\\textbf{A}\end{tabular}} & \multicolumn{2}{c|}{\begin{tabular}[c]{@{}c@{}}\textbf{~ ~ DNS~ ~~}\\\textbf{AAAA}\end{tabular}} & \multicolumn{2}{c|}{\begin{tabular}[c]{@{}c@{}}\textbf{HTTP }\\\textbf{(stateful)}\end{tabular}} & \multicolumn{2}{c|}{\textbf{~ ~HTTP~ ~}} & \multicolumn{2}{c|}{\begin{tabular}[c]{@{}c@{}}\textbf{TLS }\\\textbf{(stateful)}\end{tabular}} & \multicolumn{2}{c|}{\textbf{TLS}}  \\
+    \hline
+    \textbf{China}                                & 87 & 99                                                                                     & 87 & 99                                                                                          & 69 & 99                                                                                          & 10 & 61                                  & 76 & 99                                                                                         & 15 & 50                            \\
+    \textbf{Iran}                                 & 71 & 32                                                                                     & 71 & 32                                                                                          & 69 & 32                                                                                          & 39 & 31                                  & 10 & 32                                                                                         & 14 & 26                            \\
+    \textbf{Uzbekistan}                           &    &                                                                                        &    &                                                                                             & 90 & 83                                                                                          & 3  & 16                                  & 91 & 83                                                                                         & 2  & 16                            \\
+    \textbf{Oman}                                 &    &                                                                                        &    &                                                                                             & 83 & 70                                                                                          & 83 & 90                                  & 81 & 70                                                                                         & 3  &                               \\
+    \textbf{Morocco}                              &    &                                                                                        &    &                                                                                             & 63 &                                                                                             & 12 &                                     & 19 &                                                                                            & 7  &                               \\
+    \textbf{Bangladesh}                           &    &                                                                                        &    &                                                                                             & 59 & 71                                                                                          & 60 & 71                                  &    &                                                                                            &    &                               \\
+    \textbf{Tanzania}                             &    &                                                                                        &    &                                                                                             & 41 &                                                                                             & 35 &                                     &    &                                                                                            &    &                               \\
+    \textbf{Kuwait}                               &    &                                                                                        &    &                                                                                             & 40 & 9                                                                                           &    &                                     &    &                                                                                            &    &                               \\
+    \textbf{Libya}                                &    &                                                                                        &    &                                                                                             & 27 & 100                                                                                         & 27 & 100                                 & 27 & 100                                                                                        &    &                               \\
+    \textbf{Pakistan}                             &    &                                                                                        &    &                                                                                             & 25 & 29                                                                                          &    &                                     & 25 & 27                                                                                         &    &                               \\
+    \textbf{Lebanon}                              &    &                                                                                        &    &                                                                                             & 20 &                                                                                             &    &                                     & 20 &                                                                                            &    &                               \\
+    \textbf{Turkey}                               &    &                                                                                        &    &                                                                                             & 20 &                                                                                             &    &                                     & 13 &                                                                                            &    &                               \\
+    \hline
+    \end{tabular}
+    \caption{\textbf{\textbf{Global view of bidirectional censorship broken down by protocol}\,---\,}
+            For each country in row \textit{i} and for each protocol in column \textit{j},
+            \CIRCLE - represnts the presence of bidirectional censorship for IPv4 and IPv6
+            \LEFTcircle - represnts the presence of bidirectional censorship for IPv4 only
+            \RIGHTcircle - represnts the presence of bidirectional censorship for IPv6 only
+        }
+    \label{fig:prevalencegeneral}
+    \end{table*}}
 
 \newcommand{\TabQuack}{\begin{table}
     \centering
@@ -1271,7 +1259,7 @@ Anguilla (AI)         &     1  & \cellcolor{red5}  25.9\% & \cellcolor{green0} 1
     LB & 5                  & 0\%   & 0\%        \\
     IR & 1                  & 100\% & 0\%        \\
     KW & 1                  & 0\%   & 0\%
-    
+
     \end{tabular}
     \caption{\textbf{\textbf{Quack Comparison}\,---\,} The table shows the overlap
             between our work and the Quack echo measurement project.}
