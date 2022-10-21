@@ -6,7 +6,7 @@ In this section, we provide results from our Internet scans, broken down by
 country and protocol. For each country and protocol, we label the country as
 censoring that protocol (bidirectionally) if more than 20\% of the IPs in that
 country returned an injected response for any censored domain queries (and not
-for our control domains). For instance, in China, \todo{what percent} of IPs we
+for our control domains). For instance, in China, $87.2\%$ of IPv4 addresses we
 scanned (that didn't respond to our control queries) provided an injected
 response for our DNS A record queries for at least one of the 1400 domains we
 tested, confirming that China has a robust and widespread system in place to
@@ -181,6 +181,7 @@ tested showed evidence of censorship.
 
 
 \subsection{Missing countries}
+\label{sec:compare}
 
 We note that while our bidirectional censorship measurement technique is able to
 be easily applied globally to measure both IPv4 and IPv6 censorship, there are
