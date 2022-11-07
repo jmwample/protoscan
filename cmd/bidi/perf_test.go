@@ -8,15 +8,18 @@ import (
 )
 
 func Benchmark_GeneratePayloads(b *testing.B) {
+	ip := net.ParseIP("1.1.1.1")
 	pt := &tlsProber{}
-	ph := &httpProber{}
-	// pq := &quicProber{}
-	pd := &dnsProber{}
+	// ph := &httpProber{}
+	pq := &quicProber{}
+	// pd := &dnsProber{}
+	pu := &utlsProber{pipe: false}
 	for n := 0; n < b.N; n++ {
 		pt.buildPayload("test.com")
-		ph.buildPayload("test.com")
-		// pq.buildPayload("test.com")
-		pd.buildPayload("test.com")
+		// ph.buildPayload("test.com")
+		pq.buildPayload("test.com", ip, 8080)
+		// pd.buildPayload("test.com")
+		pu.buildPayload("test.com")
 	}
 }
 
