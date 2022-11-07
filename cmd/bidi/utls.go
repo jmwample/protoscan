@@ -1,8 +1,11 @@
 package main
 
 import (
+	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"os"
 	"path/filepath"
@@ -16,6 +19,8 @@ import (
 
 const utlsProbeTypeName = "utls"
 
+var tlsHeader, _ = hex.DecodeString("1603010")
+
 type utlsProber struct {
 	sender *tcpSender
 
@@ -24,6 +29,8 @@ type utlsProber struct {
 	outDir string
 
 	pipeConn bool
+	// PubClientHelloMsg -> used to generate new client hellos without calling generateECDHEParameters
+	pchm *tls.PubClientHelloMsg
 }
 
 func (p *utlsProber) registerFlags() {
@@ -47,45 +54,56 @@ func (p *utlsProber) sendProbe(ip net.IP, name string, verbose bool) error {
 	return err
 }
 
-// buildPayload builds a tls payload
-//
-// As demonstrated by the GeneratePayloads perf benchmark lots (~30%) of tls
-// payload build time is spent on hex.Decode which is avoidable. However, for
-// now generating payload is really fast anyways and hex is a convenient format
-// in which to interact with the payload. It might make sense to do hex.Decode
-// calls as some sort of init if speed matters in the future. Or move to using
-// slice init with bytes. But for now it doesn't matter.
-func (p *utlsProber) buildPayload(name string) ([]byte, error) {
-	server, client := net.Pipe()
-
-	tlsConfig := tls.Config{ServerName: "tlsfingerprint.io"}
-	uconn := tls.UClient(client, &tlsConfig, tls.HelloCustom)
+func (p *utlsProber) generateCHM(name string) (*tls.PubClientHelloMsg, error) {
+	tlsConfig := tls.Config{ServerName: name}
+	uconn := tls.UClient(nil, &tlsConfig, tls.HelloCustom)
 
 	clientHelloSpec := getSpec()
 	uconn.ApplyPreset(&clientHelloSpec)
 
-	if p.pipeConn {
-		go func() {
-			uconn.Handshake()
-		}()
-
-		buf := make([]byte, 4096)
-		n, err := server.Read(buf)
-		if err != nil {
-			return nil, fmt.Errorf("error faking handshake: %v", err)
-		}
-
-		return buf[:n], nil
-
-	} else {
-		err := uconn.BuildHandshakeState()
-		if err != nil {
-			return nil, fmt.Errorf("error building handshake state: %v", err)
-		}
-		return uconn.HandshakeState.Hello.Raw, nil
-
+	err := uconn.BuildHandshakeState()
+	if err != nil {
+		return nil, fmt.Errorf("error building handshake state: %v", err)
 	}
 
+	return uconn.HandshakeState.Hello, nil
+}
+
+// buildPayload builds a tls payload with a specific TLS clientHello fingerprint
+//
+// If the template clientHello has not been set it will attempt to create
+// the template ClientHello. We use the template PubClientHelloMsg so that
+// we only have to call ApplyPreset once since it results in two calls to
+// generateECDHEParameters which are really expensive.
+func (p *utlsProber) buildPayload(name string) ([]byte, error) {
+	if p.pchm == nil {
+		chm, err := p.generateCHM(name)
+		if err != nil {
+			return nil, err
+		}
+
+		p.pchm = chm
+	}
+
+	pub := p.pchm
+	_, err := rand.Read(pub.Random)
+	if err != nil {
+		return nil, err
+	}
+	_, err = rand.Read(pub.SessionId)
+	if err != nil {
+		return nil, err
+	}
+
+	pub.ServerName = name
+
+	msg := pub.Marshal()
+
+	bs := make([]byte, 2)
+	binary.BigEndian.PutUint16(bs, uint16(len(msg)))
+	header := append(tlsHeader, bs...)
+
+	return append(header, msg...), nil
 }
 
 func (p *utlsProber) handlePcap(iface string) {
