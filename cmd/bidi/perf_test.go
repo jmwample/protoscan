@@ -13,7 +13,7 @@ func Benchmark_GeneratePayloads(b *testing.B) {
 	// ph := &httpProber{}
 	pq := &quicProber{}
 	// pd := &dnsProber{}
-	pu := &utlsProber{pipe: false}
+	pu := &utlsProber{pipeConn: false}
 	for n := 0; n < b.N; n++ {
 		pt.buildPayload("test.com")
 		// ph.buildPayload("test.com")
