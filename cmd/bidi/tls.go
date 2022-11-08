@@ -6,13 +6,11 @@ import (
 	"log"
 	"math/rand"
 	"net"
-	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	"github.com/google/gopacket/pcap"
-	"github.com/google/gopacket/pcapgo"
 )
 
 const tlsProbeTypeName = "tls"
@@ -22,7 +20,8 @@ type tlsProber struct {
 
 	dkt *KeyTable
 
-	outDir string
+	outDir      string
+	CaptureICMP bool
 }
 
 func (p *tlsProber) registerFlags() {
@@ -58,25 +57,16 @@ func (p *tlsProber) buildPayload(name string) ([]byte, error) {
 	return buildTLS1_2(name)
 }
 
-func (p *tlsProber) handlePcap(iface string) {
-	f, _ := os.Create(filepath.Join(p.outDir, "tls.pcap"))
-	w := pcapgo.NewWriter(f)
-	w.WriteFileHeader(1600, layers.LinkTypeEthernet)
-	defer f.Close()
+func (p *tlsProber) handlePcap(iface string, exit chan struct{}, wg *sync.WaitGroup) {
+	pcapName := tlsProbeTypeName + ".pcap"
+	bpfFilter := "tcp src port 443"
 
-	if handle, err := pcap.OpenLive(iface, 1600, true, pcap.BlockForever); err != nil {
-		panic(err)
-	} else if err := handle.SetBPFFilter("icmp or tcp src port 443"); err != nil { // optional
-		panic(err)
-	} else {
-		defer handle.Close()
+	pcapPath := filepath.Join(p.outDir, pcapName)
 
-		packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
-		for packet := range packetSource.Packets() {
-			// p.handlePacket(packet)
-			w.WritePacket(packet.Metadata().CaptureInfo, packet.Data())
-		}
+	if p.CaptureICMP {
+		bpfFilter = "icmp or icmp6 or " + bpfFilter
 	}
+	capturePcap(iface, pcapPath, bpfFilter, exit, wg)
 }
 
 func (p *tlsProber) handlePacket(packet gopacket.Packet) {

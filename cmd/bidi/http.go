@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	"github.com/google/gopacket/pcap"
-	"github.com/google/gopacket/pcapgo"
 )
 
 // const httpUserAgent = "curl/7.81.0"
@@ -23,7 +21,8 @@ type httpProber struct {
 
 	dkt *KeyTable
 
-	outDir string
+	outDir      string
+	CaptureICMP bool
 }
 
 func (p *httpProber) registerFlags() {
@@ -52,26 +51,38 @@ func (p *httpProber) sendProbe(ip net.IP, name string, verbose bool) error {
 	return err
 }
 
-func (p *httpProber) handlePcap(iface string) {
-	f, _ := os.Create(filepath.Join(p.outDir, "http.pcap"))
-	w := pcapgo.NewWriter(f)
-	w.WriteFileHeader(1600, layers.LinkTypeEthernet)
-	defer f.Close()
+func (p *httpProber) handlePcap(iface string, exit chan struct{}, wg *sync.WaitGroup) {
+	pcapName := httpProbeTypeName + ".pcap"
+	bpfFilter := "tcp src port 80"
 
-	if handle, err := pcap.OpenLive(iface, 1600, true, pcap.BlockForever); err != nil {
-		panic(err)
-	} else if err := handle.SetBPFFilter("icmp or tcp src port 80"); err != nil { // optional
-		panic(err)
-	} else {
-		defer handle.Close()
+	pcapPath := filepath.Join(p.outDir, pcapName)
 
-		packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
-		for packet := range packetSource.Packets() {
-			// p.handlePacket(packet)
-			w.WritePacket(packet.Metadata().CaptureInfo, packet.Data())
-		}
+	if p.CaptureICMP {
+		bpfFilter = "icmp or icmp6 or " + bpfFilter
 	}
+	capturePcap(iface, pcapPath, bpfFilter, exit, wg)
 }
+
+// func (p *httpProber) handlePcap(iface string) {
+// 	f, _ := os.Create(filepath.Join(p.outDir, "http.pcap"))
+// 	w := pcapgo.NewWriter(f)
+// 	w.WriteFileHeader(1600, layers.LinkTypeEthernet)
+// 	defer f.Close()
+
+// 	if handle, err := pcap.OpenLive(iface, 1600, true, pcap.BlockForever); err != nil {
+// 		panic(err)
+// 	} else if err := handle.SetBPFFilter("icmp or tcp src port 80"); err != nil { // optional
+// 		panic(err)
+// 	} else {
+// 		defer handle.Close()
+
+// 		packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
+// 		for packet := range packetSource.Packets() {
+// 			// p.handlePacket(packet)
+// 			w.WritePacket(packet.Metadata().CaptureInfo, packet.Data())
+// 		}
+// 	}
+// }
 
 func (p *httpProber) handlePacket(packet gopacket.Packet) {
 
