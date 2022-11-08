@@ -10,14 +10,12 @@ import (
 	"log"
 	"math/rand"
 	"net"
-	"os"
 	"path/filepath"
 	"sync"
 	"unsafe"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	"github.com/google/gopacket/pcapgo"
 	"golang.org/x/crypto/cryptobyte"
 	"golang.org/x/crypto/hkdf"
 )
@@ -179,15 +177,12 @@ func (p *quicProber) handlePcap(iface string, exit chan struct{}, wg *sync.WaitG
 	pcapName := quicProbeTypeName + ".pcap"
 	bpfFilter := "udp src port 443"
 
-	f, _ := os.Create(filepath.Join(p.outDir, pcapName))
-	filename := filepath.Join(p.outDir, pcapName)
-	w := pcapgo.NewWriter(f)
-	w.WriteFileHeader(1600, layers.LinkTypeEthernet)
+	pcapPath := filepath.Join(p.outDir, pcapName)
+
 	if p.CaptureICMP {
-		defer f.Close()
 		bpfFilter = "icmp or icmp6 or " + bpfFilter
 	}
-	capturePcap(iface, filename, bpfFilter, exit, wg)
+	capturePcap(iface, pcapPath, bpfFilter, exit, wg)
 }
 
 func (p *quicProber) handlePacket(packet gopacket.Packet) {

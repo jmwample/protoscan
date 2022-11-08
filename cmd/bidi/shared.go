@@ -118,10 +118,10 @@ type netLayer interface {
 	gopacket.NetworkLayer
 }
 
-func capturePcap(iface, filename, bpfFilter string, exit chan struct{}, wg *sync.WaitGroup) {
+func capturePcap(iface, pcapPath, bpfFilter string, exit chan struct{}, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	f, err := os.Create(filename + ".gz")
+	f, err := os.Create(pcapPath)
 	if err != nil {
 		panic(err)
 	}
