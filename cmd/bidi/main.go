@@ -17,7 +17,7 @@ type prober interface {
 
 	sendProbe(ip net.IP, name string, verbose bool) error
 
-	handlePcap(iface string)
+	handlePcap(iface string, exit chan struct{}, wg *sync.WaitGroup)
 }
 
 type job struct {
@@ -112,6 +112,7 @@ func main() {
 	synDelay := flag.Duration("syn-delay", 2*time.Millisecond, "[HTTP/TLS] when syn ack is enabled delay between syn and data")
 	noChecksums := flag.Bool("no-checksums", false, "[HTTP/TLS] fix checksums on injected packets for TCP protocols")
 	outDir := flag.String("d", "out/", "output directory for log files")
+	captureICMP := flag.Bool("capture-icmp", false, "Capture ICMP in written result pcaps")
 
 	for _, p := range probers {
 		p.registerFlags()
@@ -184,6 +185,7 @@ func main() {
 		prober.sender = t
 		prober.dkt = dkt
 		prober.outDir = *outDir
+		prober.CaptureICMP = *captureICMP
 		defer t.clean()
 	case *tlsProber:
 		t, err := newTCPSender(*iface, *lAddr4, *lAddr6, !*noSynAck, *synDelay, !*noChecksums)
@@ -193,6 +195,7 @@ func main() {
 		prober.sender = t
 		prober.dkt = dkt
 		prober.outDir = *outDir
+		prober.CaptureICMP = *captureICMP
 		defer t.clean()
 	case *echProber:
 		t, err := newTCPSender(*iface, *lAddr4, *lAddr6, !*noSynAck, *synDelay, !*noChecksums)
@@ -202,6 +205,7 @@ func main() {
 		prober.sender = t
 		prober.dkt = dkt
 		prober.outDir = *outDir
+		prober.CaptureICMP = *captureICMP
 		defer t.clean()
 	case *quicProber:
 		u, err := newUDPSender(*iface, *lAddr4, *lAddr6, true, !*noChecksums)
@@ -211,6 +215,7 @@ func main() {
 		prober.sender = u
 		prober.dkt = dkt
 		prober.outDir = *outDir
+		prober.CaptureICMP = *captureICMP
 		defer u.clean()
 	case *dnsProber:
 		u, err := newUDPSender(*iface, *lAddr4, *lAddr6, true, !*noChecksums)
@@ -219,6 +224,7 @@ func main() {
 		}
 		prober.sender = u
 		prober.outDir = *outDir
+		prober.CaptureICMP = *captureICMP
 		defer u.clean()
 	case *dtlsProber:
 		u, err := newUDPSender(*iface, *lAddr4, *lAddr6, true, !*noChecksums)
@@ -228,6 +234,7 @@ func main() {
 		prober.sender = u
 		prober.dkt = dkt
 		prober.outDir = *outDir
+		prober.CaptureICMP = *captureICMP
 
 		if prober.randDestinationPort {
 			min, max, err := parseRandRange(prober.portRangeString)
@@ -237,7 +244,6 @@ func main() {
 			prober.randPortRange = portRange{
 				min, max,
 			}
-
 		}
 		defer u.clean()
 	}
@@ -251,7 +257,10 @@ func main() {
 		go worker(p, *wait, *verbose, jobs, &wg)
 	}
 
-	go p.handlePcap(*iface)
+	pcapWg := sync.WaitGroup{}
+	pcapWg.Add(1)
+	pcapExit := make(chan struct{})
+	go p.handlePcap(*iface, pcapExit, &pcapWg)
 
 	go func() {
 		start := time.Now()
@@ -283,6 +292,7 @@ func main() {
 
 	wg.Wait()
 
-	// sleep for 15 seconds while handlePcap still runs in case of delayed responses
-	// time.Sleep(15 * time.Second)
+	pcapExit <- struct{}{}
+	close(pcapExit)
+	pcapWg.Wait()
 }

@@ -1,13 +1,19 @@
 package main
 
 import (
+	"bufio"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"math/rand"
 	"net"
+	"os"
 	"sync"
 
 	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
+	"github.com/google/gopacket/pcap"
+	"github.com/google/gopacket/pcapgo"
 	"github.com/google/gopacket/routing"
 )
 
@@ -110,4 +116,42 @@ func decodeOrPanic(s string) []byte {
 type netLayer interface {
 	gopacket.SerializableLayer
 	gopacket.NetworkLayer
+}
+
+func capturePcap(iface, filename, bpfFilter string, exit chan struct{}, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	f, err := os.Create(filename + ".gz")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	// Required otherwise io doesn't flush properly on deferred close
+	outWriter := bufio.NewWriter(f)
+	defer outWriter.Flush()
+
+	w := pcapgo.NewWriter(outWriter)
+	w.WriteFileHeader(1600, layers.LinkTypeEthernet)
+	defer f.Close()
+
+	if handle, err := pcap.OpenLive(iface, 1600, true, pcap.BlockForever); err != nil {
+		panic(err)
+	} else if err := handle.SetBPFFilter(bpfFilter); err != nil { // optional
+		panic(err)
+	} else {
+		defer handle.Close()
+
+		packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
+		for packet := range packetSource.Packets() {
+			w.WritePacket(packet.Metadata().CaptureInfo, packet.Data())
+			select {
+			case <-exit:
+				log.Println("Closing pcap handler")
+				return
+			default:
+				w.WritePacket(packet.Metadata().CaptureInfo, packet.Data())
+			}
+		}
+	}
 }
