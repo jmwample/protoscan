@@ -2,12 +2,14 @@ package main
 
 import (
 	"bufio"
+	"compress/gzip"
 	"encoding/hex"
 	"fmt"
 	"log"
 	"math/rand"
 	"net"
 	"os"
+	"path"
 	"sync"
 
 	"github.com/google/gopacket"
@@ -121,7 +123,7 @@ type netLayer interface {
 func capturePcap(iface, pcapPath, bpfFilter string, exit chan struct{}, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	f, err := os.Create(pcapPath)
+	f, err := os.Create(pcapPath + ".gz")
 	if err != nil {
 		panic(err)
 	}
@@ -131,7 +133,14 @@ func capturePcap(iface, pcapPath, bpfFilter string, exit chan struct{}, wg *sync
 	outWriter := bufio.NewWriter(f)
 	defer outWriter.Flush()
 
-	w := pcapgo.NewWriter(outWriter)
+	// Write PCAP in compressed format.
+	filename := path.Base(pcapPath)
+	archiver := gzip.NewWriter(outWriter)
+	archiver.Name = filename
+	defer archiver.Close()
+
+	// Write PCAP
+	w := pcapgo.NewWriter(archiver)
 	if err := w.WriteFileHeader(1600, layers.LinkTypeEthernet); err != nil {
 		panic(err)
 	}
