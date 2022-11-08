@@ -132,8 +132,9 @@ func capturePcap(iface, pcapPath, bpfFilter string, exit chan struct{}, wg *sync
 	defer outWriter.Flush()
 
 	w := pcapgo.NewWriter(outWriter)
-	w.WriteFileHeader(1600, layers.LinkTypeEthernet)
-	defer f.Close()
+	if err := w.WriteFileHeader(1600, layers.LinkTypeEthernet); err != nil {
+		panic(err)
+	}
 
 	if handle, err := pcap.OpenLive(iface, 1600, true, pcap.BlockForever); err != nil {
 		panic(err)
@@ -150,7 +151,10 @@ func capturePcap(iface, pcapPath, bpfFilter string, exit chan struct{}, wg *sync
 				log.Println("Closing pcap handler")
 				return
 			default:
-				w.WritePacket(packet.Metadata().CaptureInfo, packet.Data())
+				if err := w.WritePacket(packet.Metadata().CaptureInfo, packet.Data()); err != nil {
+					log.Printf("pcap.WritePacket() error: %v", err)
+					return
+				}
 			}
 		}
 	}
