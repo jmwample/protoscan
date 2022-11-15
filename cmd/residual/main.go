@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"flag"
 	"log"
 	"math/rand"
@@ -10,36 +11,18 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/jmwample/protoscan/pkg/probes"
+	"github.com/jmwample/protoscan/pkg/probes/dns"
+	"github.com/jmwample/protoscan/pkg/probes/http"
+	"github.com/jmwample/protoscan/pkg/probes/tls"
+	"github.com/jmwample/protoscan/pkg/send/raw"
+	"github.com/jmwample/protoscan/pkg/send/tcp"
+	"github.com/jmwample/protoscan/pkg/send/udp"
+	"github.com/jmwample/protoscan/pkg/track"
 )
 
-type prober interface {
-	registerFlags()
-
-	sendProbe(ip net.IP, name string, verbose bool) error
-
-	handlePcap(iface string)
-}
-
-type job struct {
-	domain string
-	ip     string
-}
-
-func worker(p prober, wait time.Duration, verbose bool, ips <-chan *job, wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	for job := range ips {
-		addr := net.ParseIP(job.ip)
-		err := p.sendProbe(addr, job.domain, verbose)
-		if err != nil {
-			log.Printf("Result %s,%s - error: %v\n", job.ip, job.domain, err)
-			continue
-		}
-
-		// Wait here
-		time.Sleep(wait)
-	}
-}
+var wrapUpDuration = 10 * time.Second
 
 func getDomains(fname string) ([]string, error) {
 
@@ -88,33 +71,36 @@ func getIPs(fPath string) ([]string, error) {
 
 func main() {
 
-	var probers = map[string]prober{
-		dnsProbeTypeName:  &dnsProber{},
-		httpProbeTypeName: &httpProber{},
-		tlsProbeTypeName:  &tlsProber{},
-		esniProbeTypeName: &echProber{esni: true, send1_3: true},
-		echProbeTypeName:  &echProber{ech: true, send1_3: true},
-		quicProbeTypeName: &quicProber{},
-		dtlsProbeTypeName: &dtlsProber{},
+	// only probe types planned for residual measurement. Added here for Flags
+	var probers = map[string]probes.Prober{
+		dns.ProbeTypeName:  &dns.Prober{},
+		http.ProbeTypeName: &http.Prober{},
+		tls.ProbeTypeName:  &tls.Prober{},
 	}
 
 	nWorkers := flag.Uint("workers", 50, "Number worker threads")
 	wait := flag.Duration("wait", 5*time.Second, "Duration a worker waits after sending a probe")
+
 	verbose := flag.Bool("verbose", false, "Verbose prints sent/received DNS packets/info")
+	seed := flag.Int64("seed", -1, "[HTTP/TLS/QUIC/DTLS] seed for random elements of generated packets. default seeded with time.Now.Nano")
+
 	domainf := flag.String("domains", "domains.txt", "File with a list of domains to test")
+	ctrlf := flag.String("controls", "ctrls.txt", "File with a list of control domains")
 	ipFName := flag.String("ips", "", "File with a list of target ip to test. Empty string reads from stdin")
+	outDir := flag.String("d", "out/", "output directory for log files")
+
 	iface := flag.String("iface", "eth0", "Interface to listen on")
 	lAddr4 := flag.String("laddr", "", "Local address to send packets from - unset uses default interface")
 	lAddr6 := flag.String("laddr6", "", "Local address to send packets from - unset uses default interface")
-	proberType := flag.String("type", "dns", "probe type to send")
-	seed := flag.Int64("seed", -1, "[HTTP/TLS/QUIC/DTLS] seed for random elements of generated packets. default seeded with time.Now.Nano")
-	noSynAck := flag.Bool("nsa", false, "[HTTP/TLS] No Syn Ack (nsa) disable syn, and ack warm up packets for tcp probes")
-	synDelay := flag.Duration("syn-delay", 2*time.Millisecond, "[HTTP/TLS] when syn ack is enabled delay between syn and data")
+
 	noChecksums := flag.Bool("no-checksums", false, "[HTTP/TLS] fix checksums on injected packets for TCP protocols")
-	outDir := flag.String("d", "out/", "output directory for log files")
+	synDelay := flag.Duration("syn-delay", 2*time.Millisecond, "[HTTP/TLS] when syn ack is enabled delay between syn and data")
+
+	pps := flag.String("pps", "", "Human readable string of packet per second limit on send")
+	bps := flag.String("bps", "", "Human readable string of bytes per second limit on send")
 
 	for _, p := range probers {
-		p.registerFlags()
+		p.RegisterFlags()
 	}
 
 	flag.Parse()
@@ -131,12 +117,6 @@ func main() {
 	defer logFile.Close()
 	log.SetOutput(logFile)
 
-	var p prober
-	var ok bool
-	if p, ok = probers[*proberType]; !ok {
-		panic("unknown probe type")
-	}
-
 	if *seed == -1 {
 		*seed = int64(time.Now().Nanosecond())
 	}
@@ -150,6 +130,13 @@ func main() {
 	}
 	log.Printf("Read %d domains\n", len(domains))
 
+	// Parse domains
+	controls, err := getDomains(*ctrlf)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("Read %d controls\n", len(controls))
+
 	// Get IPs
 	ips, err := getIPs(*ipFName)
 	if err != nil {
@@ -157,7 +144,7 @@ func main() {
 	}
 	log.Printf("Read %d ips\n", len(ips))
 
-	dkt, err := createDomainKeyTable(domains)
+	dkt, err := track.NewDomainKeyTable(domains)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -169,120 +156,157 @@ func main() {
 			log.Fatalf("error opening dkt file: %v", err)
 		}
 		defer dktFile.Close()
-		err = dkt.marshal(dktFile)
+		err = dkt.Marshal(dktFile)
 		if err != nil {
 			log.Fatalf("error writing domain key table: %v", err)
 		}
 	}()
 
-	switch prober := p.(type) {
-	case *httpProber:
-		t, err := newTCPSender(*iface, *lAddr4, *lAddr6, !*noSynAck, *synDelay, !*noChecksums)
-		if err != nil {
-			log.Fatal(err)
-		}
-		prober.sender = t
-		prober.dkt = dkt
-		prober.outDir = *outDir
-		defer t.clean()
-	case *tlsProber:
-		t, err := newTCPSender(*iface, *lAddr4, *lAddr6, !*noSynAck, *synDelay, !*noChecksums)
-		if err != nil {
-			log.Fatal(err)
-		}
-		prober.sender = t
-		prober.dkt = dkt
-		prober.outDir = *outDir
-		defer t.clean()
-	case *echProber:
-		t, err := newTCPSender(*iface, *lAddr4, *lAddr6, !*noSynAck, *synDelay, !*noChecksums)
-		if err != nil {
-			log.Fatal(err)
-		}
-		prober.sender = t
-		prober.dkt = dkt
-		prober.outDir = *outDir
-		defer t.clean()
-	case *quicProber:
-		u, err := newUDPSender(*iface, *lAddr4, *lAddr6, true, !*noChecksums)
-		if err != nil {
-			log.Fatal(err)
-		}
-		prober.sender = u
-		prober.dkt = dkt
-		prober.outDir = *outDir
-		defer u.clean()
-	case *dnsProber:
-		u, err := newUDPSender(*iface, *lAddr4, *lAddr6, true, !*noChecksums)
-		if err != nil {
-			log.Fatal(err)
-		}
-		prober.sender = u
-		prober.outDir = *outDir
-		defer u.clean()
-	case *dtlsProber:
-		u, err := newUDPSender(*iface, *lAddr4, *lAddr6, true, !*noChecksums)
-		if err != nil {
-			log.Fatal(err)
-		}
-		prober.sender = u
-		prober.dkt = dkt
-		prober.outDir = *outDir
+	ctx := context.Background()
+	rawSender, err := raw.NewSenderLimited(ctx, *iface, int(*nWorkers), *pps, *bps)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rawSender.Close()
 
-		if prober.randDestinationPort {
-			min, max, err := parseRandRange(prober.portRangeString)
-			if err != nil {
-				log.Fatal(err)
+	tcpSender, err := tcp.FromRaw(rawSender, *iface, *lAddr4, *lAddr6)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	udpSender, err := udp.FromRaw(rawSender, *iface, *lAddr4, *lAddr6)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	optDNS := udp.Options{
+		Checksums: !*noChecksums,
+	}
+
+	optTCPNSA := tcp.Options{
+		Checksums: !*noChecksums,
+		Ack:       false,
+		Syn:       false,
+		SynDelay:  *synDelay,
+	}
+
+	optTCP := tcp.Options{
+		Checksums: !*noChecksums,
+		Ack:       true,
+		Syn:       true,
+		SynDelay:  *synDelay,
+	}
+
+	probers = map[string]probes.Prober{
+		dns.ProbeTypeName: &dns.Prober{
+			Sender:        udpSender,
+			OutDir:        *outDir + "/dns",
+			SenderOptions: optDNS,
+		},
+		http.ProbeTypeName: &http.Prober{
+			Sender:        tcpSender,
+			DKT:           dkt,
+			OutDir:        *outDir + "/http",
+			SenderOptions: optTCP,
+		},
+		http.ProbeTypeName + "nsa": &http.Prober{
+			Sender:        tcpSender,
+			DKT:           dkt,
+			OutDir:        *outDir + "/http-nsa",
+			SenderOptions: optTCPNSA,
+		},
+		tls.ProbeTypeName: &tls.Prober{
+			Sender:        tcpSender,
+			DKT:           dkt,
+			OutDir:        *outDir + "/tls",
+			SenderOptions: optTCP,
+		},
+		tls.ProbeTypeName + "nsa": &tls.Prober{
+			Sender:        tcpSender,
+			DKT:           dkt,
+			OutDir:        *outDir + "/tls-nsa",
+			SenderOptions: optTCPNSA,
+		},
+	}
+
+	// go func(c context.Context) {
+	// 	ticker := time.NewTicker(5 * time.Second)
+	// 	for {
+	// 		select {
+	// 		case <-c.Done():
+	// 			return
+	// 		case <-ticker.C:
+	// 			rawSender.PrintAndReset()
+	// 		}
+	// 	}
+	// }(ctx)
+
+	// serial wait times - cumulative in comments
+	wait1 := []time.Duration{
+		0 * time.Second,
+		1 * time.Second,
+		3 * time.Second, // 4
+		5 * time.Second, // 9
+		// 20 * time.Second, // 29
+		// 30 * time.Second, // 59
+		// 30 * time.Second, // 89
+		// 30 * time.Second, // 119
+		// 60 * time.Second, // 179
+		// 60 * time.Second, // 239
+		// 60 * time.Second, // 299
+	}
+
+	// wait2 := []time.Duration{
+
+	// }
+
+	for pName, p := range probers {
+
+		log.Println("starting ", pName)
+		probeCtx, probeFinished := context.WithCancel(context.Background())
+		pcapWg := new(sync.WaitGroup)
+		go p.HandlePcap(probeCtx, *iface, pcapWg)
+
+		for _, ctrl := range controls {
+			for _, ip := range ips {
+				log.Printf("sent ctrl %s,%s\n", ip, ctrl)
 			}
-			prober.randPortRange = portRange{
-				min, max,
+		}
+
+		for _, domain := range domains {
+			roundStart := time.Now()
+			for _, ip := range ips {
+				log.Printf("sent %s,%s - %s\n", ip, domain, time.Since(roundStart))
+				// Wait here for rate limiting
+				time.Sleep(*wait)
+			}
+
+			for _, backoff := range wait1 {
+				time.Sleep(backoff)
+
+				for _, ctrl := range controls {
+					for _, ip := range ips {
+						log.Printf("sent ctrl %s,%s - %s\n", ip, ctrl, time.Since(roundStart))
+						// Wait here for rate limiting
+
+						target := net.ParseIP(ip)
+						err := p.SendProbe(target, domain, *verbose)
+						if err != nil {
+							log.Printf("Result %s,%s - error: %v\n", ip, domain, err)
+							continue
+						}
+
+						time.Sleep(*wait)
+					}
+				}
+
 			}
 
 		}
-		defer u.clean()
+
+		time.Sleep(wrapUpDuration)
+		probeFinished()
+		log.Println("completed ", pName)
 	}
 
-	jobs := make(chan *job, *nWorkers*10)
-	var wg sync.WaitGroup
-
-	for w := uint(0); w < *nWorkers; w++ {
-		wg.Add(1)
-		// go dnsWorker(*wait, *verbose, false, *lAddr, ips, domains, &wg)
-		go worker(p, *wait, *verbose, jobs, &wg)
-	}
-
-	go p.handlePcap(*iface)
-
-	go func() {
-		start := time.Now()
-		epochStart := time.Now()
-		for {
-			time.Sleep(5 * time.Second)
-			epochDur := time.Since(epochStart).Milliseconds()
-			log.Printf("stats %d %d %d %d %f %f",
-				time.Since(start).Milliseconds(),
-				epochDur,
-				stats.pt,
-				stats.bt,
-				float64(stats.ppe)*1000/float64(epochDur),
-				float64(stats.bpe)*1000/float64(epochDur))
-
-			stats.epochReset()
-			epochStart = time.Now()
-		}
-	}()
-
-	nJobs := 0
-	for _, domain := range domains {
-		for _, ip := range ips {
-			jobs <- &job{domain: domain, ip: ip}
-			nJobs++
-		}
-	}
-	close(jobs)
-
-	wg.Wait()
-
-	// sleep for 15 seconds while handlePcap still runs in case of delayed responses
-	// time.Sleep(15 * time.Second)
 }
