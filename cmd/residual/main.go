@@ -79,7 +79,6 @@ func main() {
 	}
 
 	nWorkers := flag.Uint("workers", 50, "Number worker threads")
-	wait := flag.Duration("wait", 5*time.Second, "Duration a worker waits after sending a probe")
 
 	verbose := flag.Bool("verbose", false, "Verbose prints sent/received DNS packets/info")
 	seed := flag.Int64("seed", -1, "[HTTP/TLS/QUIC/DTLS] seed for random elements of generated packets. default seeded with time.Now.Nano")
@@ -94,7 +93,7 @@ func main() {
 	lAddr6 := flag.String("laddr6", "", "Local address to send packets from - unset uses default interface")
 
 	noChecksums := flag.Bool("no-checksums", false, "[HTTP/TLS] fix checksums on injected packets for TCP protocols")
-	synDelay := flag.Duration("syn-delay", 2*time.Millisecond, "[HTTP/TLS] when syn ack is enabled delay between syn and data")
+	synDelay := flag.Duration("syn-delay", 1*time.Millisecond, "[HTTP/TLS] when syn ack is enabled delay between syn and data")
 
 	pps := flag.String("pps", "", "Human readable string of packet per second limit on send")
 	bps := flag.String("bps", "", "Human readable string of bytes per second limit on send")
@@ -107,7 +106,7 @@ func main() {
 
 	err := os.MkdirAll(*outDir, os.ModePerm)
 	if err != nil {
-		log.Println(err)
+		log.Fatalln(err)
 	}
 
 	logFile, err := os.OpenFile(filepath.Join(*outDir, "log.out"), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -144,7 +143,8 @@ func main() {
 	}
 	log.Printf("Read %d ips\n", len(ips))
 
-	dkt, err := track.NewDomainKeyTable(domains)
+	allKeys := append(domains, controls...)
+	dkt, err := track.NewDomainKeyTable(allKeys)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -263,50 +263,64 @@ func main() {
 	for pName, p := range probers {
 
 		log.Println("starting ", pName)
-		probeCtx, probeFinished := context.WithCancel(context.Background())
 		pcapWg := new(sync.WaitGroup)
-		go p.HandlePcap(probeCtx, *iface, pcapWg)
+
+		// Measure and capture for the control domains first
+		ctrlCtx, ctrlFinished := context.WithCancel(context.Background())
+		pcapWg.Add(1)
+		go p.HandlePcap(ctrlCtx, *iface, "ctrl", pcapWg)
 
 		for _, ctrl := range controls {
 			for _, ip := range ips {
-				log.Printf("sent ctrl %s,%s\n", ip, ctrl)
+				target := net.ParseIP(ip)
+				err := p.SendProbe(target, ctrl, 0, *verbose)
+				if err != nil {
+					log.Printf("Result %s,%s - error: %v\n", ip, ctrl, err)
+					continue
+				}
 			}
 		}
+		ctrlFinished()
+		log.Println("completed ctrl", pName)
+		pcapWg.Wait()
+
+		// Measure for sensitive domains and control domains w/ backoff
+		probeCtx, probeFinished := context.WithCancel(context.Background())
+		pcapWg.Add(1)
+		go p.HandlePcap(probeCtx, *iface, "", pcapWg)
 
 		for _, domain := range domains {
-			roundStart := time.Now()
 			for _, ip := range ips {
-				log.Printf("sent %s,%s - %s\n", ip, domain, time.Since(roundStart))
-				// Wait here for rate limiting
-				time.Sleep(*wait)
+				target := net.ParseIP(ip)
+				err := p.SendProbe(target, domain, 0, *verbose)
+				if err != nil {
+					log.Printf("Result %s,%s - error: %v\n", ip, domain, err)
+					continue
+				}
 			}
 
-			for _, backoff := range wait1 {
+			for i, backoff := range wait1 {
 				time.Sleep(backoff)
 
 				for _, ctrl := range controls {
 					for _, ip := range ips {
-						log.Printf("sent ctrl %s,%s - %s\n", ip, ctrl, time.Since(roundStart))
 						// Wait here for rate limiting
 
 						target := net.ParseIP(ip)
-						err := p.SendProbe(target, domain, *verbose)
+						err := p.SendProbe(target, ctrl, i, *verbose)
 						if err != nil {
 							log.Printf("Result %s,%s - error: %v\n", ip, domain, err)
 							continue
 						}
-
-						time.Sleep(*wait)
 					}
 				}
 
 			}
-
 		}
 
-		time.Sleep(wrapUpDuration)
+		// time.Sleep(wrapUpDuration)
 		probeFinished()
-		log.Println("completed ", pName)
+		log.Println("completed probing", pName)
+		pcapWg.Wait()
 	}
-
 }

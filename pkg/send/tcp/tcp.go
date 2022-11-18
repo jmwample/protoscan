@@ -213,6 +213,7 @@ func (t *Sender) Send(dst string, sport int, payload []byte, tcpOpts interface{}
 	}
 	if tcpOpt.Ack {
 		t.SendPkt(&ip, ackBuf)
+		time.Sleep(tcpOpt.SynDelay)
 	}
 
 	t.SendPkt(&ip, tcpPayloadBuf.Bytes())

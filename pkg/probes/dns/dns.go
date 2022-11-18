@@ -48,7 +48,7 @@ func (p *Prober) RegisterFlags() {
 
 // SendProbe generates a payload and sends a probe (can be more than one packet)
 // as part of the Prober interface
-func (p *Prober) SendProbe(ip net.IP, name string, verbose bool) error {
+func (p *Prober) SendProbe(ip net.IP, name string, i int, verbose bool) error {
 
 	out, err := p.buildPayload(name)
 	if err != nil {
@@ -94,8 +94,11 @@ func (p *Prober) buildPayload(name string) ([]byte, error) {
 
 // HandlePcap deals with response traffic in a way specific to this probe type
 // as part of the Prober interface. Callback disabled for This capture
-func (p *Prober) HandlePcap(ctx context.Context, iface string, wg *sync.WaitGroup) {
+func (p *Prober) HandlePcap(ctx context.Context, iface string, tag string, wg *sync.WaitGroup) {
 	pcapName := ProbeTypeName + ".pcap"
+	if tag != "" {
+		pcapName = ProbeTypeName + "-" + tag + ".pcap"
+	}
 	pcapPath := filepath.Join(p.OutDir, pcapName)
 	bpfFilter := BPFFilter
 

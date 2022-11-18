@@ -44,7 +44,7 @@ func (p *Prober) RegisterFlags() {}
 
 // SendProbe generates a payload and sends a probe (can be more than one packet)
 // as part of the Prober interface
-func (p *Prober) SendProbe(ip net.IP, name string, verbose bool) error {
+func (p *Prober) SendProbe(ip net.IP, name string, i int, verbose bool) error {
 	out, err := p.buildPayload(name)
 	if err != nil {
 		return fmt.Errorf("failed to build tls payload: %s", err)
@@ -53,7 +53,7 @@ func (p *Prober) SendProbe(ip net.IP, name string, verbose bool) error {
 	sport, _ := p.DKT.Get(name)
 
 	addr := net.JoinHostPort(ip.String(), "443")
-	seqAck, sport, err := p.Sender.Send(addr, sport.(int), out, p.SenderOptions)
+	seqAck, sport, err := p.Sender.Send(addr, sport.(int)+i, out, p.SenderOptions)
 	if err == nil && verbose {
 		log.Printf("Sent :%d -> %s %s %s\n", sport, addr, name, seqAck)
 	}
@@ -63,8 +63,11 @@ func (p *Prober) SendProbe(ip net.IP, name string, verbose bool) error {
 
 // HandlePcap deals with response traffic in a way specific to this probe type
 // as part of the Prober interface. Callback disabled for This capture
-func (p *Prober) HandlePcap(ctx context.Context, iface string, wg *sync.WaitGroup) {
+func (p *Prober) HandlePcap(ctx context.Context, iface string, tag string, wg *sync.WaitGroup) {
 	pcapName := ProbeTypeName + ".pcap"
+	if tag != "" {
+		pcapName = ProbeTypeName + "-" + tag + ".pcap"
+	}
 	pcapPath := filepath.Join(p.OutDir, pcapName)
 	bpfFilter := BPFFilter
 

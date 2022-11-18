@@ -10,7 +10,7 @@ import (
 type Prober interface {
 	RegisterFlags()
 
-	SendProbe(ip net.IP, name string, verbose bool) error
+	SendProbe(ip net.IP, name string, i int, verbose bool) error
 
-	HandlePcap(ctx context.Context, iface string, wg *sync.WaitGroup)
+	HandlePcap(ctx context.Context, iface string, tag string, wg *sync.WaitGroup)
 }

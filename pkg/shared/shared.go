@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -107,7 +108,17 @@ type NetLayer interface {
 func CapturePcap(ctx context.Context, iface, pcapPath, bpfFilter string, callback func(p gopacket.Packet), wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	f, err := os.Create(pcapPath + ".gz")
+	pcapDir := path.Dir(pcapPath)
+	if _, err := os.Stat(pcapDir); errors.Is(err, os.ErrNotExist) {
+		// directory to store pcap doesn't exist - create it
+		err = os.MkdirAll(pcapDir, os.ModePerm)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}
+
+	f, err := os.OpenFile(pcapPath+".gz", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		panic(err)
 	}

@@ -28,12 +28,23 @@ import (
 //
 // Note - because we use maps the value types must be hashable - i.e. no []byte
 func NewDomainKeyTable(domains []string) (*KeyTable, error) {
-	return createDomainKeyTable(domains)
+	return createDomainKeyTableStepped(domains)
+}
+
+func createDomainKeyTableStepped(domains []string) (*KeyTable, error) {
+	t := newKeyTable()
+
+	for i, d := range domains {
+		base := 1001 + i*16
+		t.Insert(d, base)
+	}
+
+	return t, nil
 }
 
 func createDomainKeyTable(domains []string) (*KeyTable, error) {
 	t := newKeyTable()
-	t.generate = func(s string) (interface{}, error) {
+	t.generate = func(s string) (any, error) {
 		return int((rand.Int31() % 64535) + 1000), nil
 	}
 
@@ -69,25 +80,25 @@ func createDomainKeyTable(domains []string) (*KeyTable, error) {
 type KeyTable struct {
 	m sync.Mutex
 
-	generate func(string) (interface{}, error)
+	generate func(string) (any, error)
 
 	// forward
-	F map[string]interface{} `json:"fwd"`
+	F map[string]any `json:"fwd"`
 	// reverse
-	R map[interface{}]string `json:"rev"`
+	R map[any]string `json:"rev"`
 }
 
 func newKeyTable() *KeyTable {
 	t := &KeyTable{
-		F: make(map[string]interface{}),
-		R: make(map[interface{}]string),
+		F: make(map[string]any),
+		R: make(map[any]string),
 	}
 
 	return t
 }
 
 // Get returns an element from the table by key
-func (t *KeyTable) Get(key string) (interface{}, bool) {
+func (t *KeyTable) Get(key string) (any, bool) {
 	t.m.Lock()
 	defer t.m.Unlock()
 
@@ -96,7 +107,7 @@ func (t *KeyTable) Get(key string) (interface{}, bool) {
 }
 
 // GetKey returns an key from the table by element value
-func (t *KeyTable) GetKey(v interface{}) (string, bool) {
+func (t *KeyTable) GetKey(v any) (string, bool) {
 	t.m.Lock()
 	defer t.m.Unlock()
 
@@ -105,7 +116,7 @@ func (t *KeyTable) GetKey(v interface{}) (string, bool) {
 }
 
 // Insert puts a new element into the table overwriting if key or value already exists
-func (t *KeyTable) Insert(key string, v interface{}) {
+func (t *KeyTable) Insert(key string, v any) {
 	t.m.Lock()
 	defer t.m.Unlock()
 
@@ -114,7 +125,7 @@ func (t *KeyTable) Insert(key string, v interface{}) {
 }
 
 // TryInsertGenerate puts a new element in the table, but attempts to find an unused key
-func (t *KeyTable) TryInsertGenerate(key string) (v interface{}, err error) {
+func (t *KeyTable) TryInsertGenerate(key string) (v any, err error) {
 	t.m.Lock()
 	defer t.m.Unlock()
 
