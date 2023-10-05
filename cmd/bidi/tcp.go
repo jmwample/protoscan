@@ -148,6 +148,7 @@ func (t *tcpSender) sendTCP(dst string, sport int, domain string, payload []byte
 			DstIP:    ip,
 			Version:  4,
 			TTL:      64,
+			Id:       uint16(rand.Uint32()),
 			Protocol: layers.IPProtocolTCP,
 		}
 		networkLayer = ipLayer4
@@ -157,6 +158,7 @@ func (t *tcpSender) sendTCP(dst string, sport int, domain string, payload []byte
 			DstIP:      ip,
 			Version:    6,
 			HopLimit:   64,
+			FlowLabel:  rand.Uint32(),
 			NextHeader: layers.IPProtocolTCP,
 		}
 		networkLayer = ipLayer6

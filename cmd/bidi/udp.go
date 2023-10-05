@@ -89,7 +89,6 @@ func (u *udpSender) clean() {
 	}
 }
 
-//
 // if sport is 0 (unset) then the Dial should generate a random source port.
 func (u *udpSender) sendUDP(dst string, sport int, payload []byte, verbose bool) (string, error) {
 
@@ -180,6 +179,7 @@ func (u *udpSender) sendUDPRaw(dst string, sport int, payload []byte, verbose bo
 			DstIP:    ip,
 			Version:  4,
 			TTL:      64,
+			Id:       uint16(rand.Uint32()),
 			Protocol: layers.IPProtocolUDP,
 		}
 		networkLayer = ipLayer4
@@ -189,6 +189,7 @@ func (u *udpSender) sendUDPRaw(dst string, sport int, payload []byte, verbose bo
 			DstIP:      ip,
 			Version:    6,
 			HopLimit:   64,
+			FlowLabel:  rand.Uint32(),
 			NextHeader: layers.IPProtocolUDP,
 		}
 		networkLayer = ipLayer6
