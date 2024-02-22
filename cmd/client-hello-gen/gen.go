@@ -3,8 +3,9 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
-	tls "github.com/refraction-networking/utls"
 	"net"
+
+	tls "github.com/refraction-networking/utls"
 )
 
 func getSpec() tls.ClientHelloSpec {
@@ -79,8 +80,44 @@ func getSpec() tls.ClientHelloSpec {
 
 }
 
-func main() {
+func method3() ([]byte, error) {
+	tlsConfig := tls.Config{ServerName: "tlsfingerprint.io"}
+	uconn := tls.UClient(nil, &tlsConfig, tls.HelloCustom)
 
+	clientHelloSpec := getSpec()
+	uconn.ApplyPreset(&clientHelloSpec)
+
+	err := uconn.BuildHandshakeState()
+	if err != nil {
+		fmt.Printf("Got error: %s; expected to succeed", err)
+		return nil, err
+	}
+
+	pub := uconn.HandshakeState.Hello
+	pub.Random = make([]byte, 16)
+	pub.ServerName = "abcdefg.com"
+
+	return pub.Marshal(), nil
+}
+
+func method2() ([]byte, error) {
+	tlsConfig := tls.Config{ServerName: "tlsfingerprint.io"}
+	uconn := tls.UClient(nil, &tlsConfig, tls.HelloCustom)
+
+	clientHelloSpec := getSpec()
+	uconn.ApplyPreset(&clientHelloSpec)
+
+	err := uconn.BuildHandshakeState()
+	if err != nil {
+		fmt.Printf("Got error: %s; expected to succeed", err)
+		return nil, err
+	}
+
+	raw := uconn.HandshakeState.Hello.Raw
+	return raw, nil
+}
+
+func method1() ([]byte, error) {
 	server, client := net.Pipe()
 
 	tlsConfig := tls.Config{ServerName: "tlsfingerprint.io"}
@@ -88,14 +125,6 @@ func main() {
 
 	clientHelloSpec := getSpec()
 	uconn.ApplyPreset(&clientHelloSpec)
-
-	/*
-		//err := uconn.BuildHandshakeState()
-		//msg, _, err := uconn.makeClientHello()
-		if err != nil {
-			fmt.Printf("Got error: %s; expected to succeed", err)
-			return
-		}*/
 	go func() {
 		uconn.Handshake()
 	}()
@@ -103,12 +132,22 @@ func main() {
 	buf := make([]byte, 4096)
 	n, err := server.Read(buf)
 	if err != nil {
-		fmt.Printf("Got error: %v\n", err)
-		return
+		return nil, err
 	}
 
-	fmt.Printf("Read %d bytes: %s\n", n, hex.EncodeToString(buf[:n]))
-	//fmt.Printf("%s\n", hex.EncodeToString(uconn.HandshakeState.Hello.Raw))
-	//marshalledHello := msg.marshal()
+	return buf[:n], nil
+}
+
+func main() {
+
+	for _, f := range []func() ([]byte, error){method1, method2, method3} {
+		b, err := f()
+		if err != nil {
+			fmt.Printf("err: %v", err)
+			continue
+		}
+
+		fmt.Printf("%d %s\n", len(b), hex.EncodeToString(b))
+	}
 
 }

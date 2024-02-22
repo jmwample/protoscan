@@ -94,6 +94,7 @@ func main() {
 		tlsProbeTypeName:  &tlsProber{},
 		esniProbeTypeName: &echProber{esni: true, send1_3: true},
 		echProbeTypeName:  &echProber{ech: true, send1_3: true},
+		utlsProbeTypeName: &utlsProber{pipeConn: true},
 		quicProbeTypeName: &quicProber{},
 		dtlsProbeTypeName: &dtlsProber{},
 	}
@@ -206,6 +207,15 @@ func main() {
 		prober.dkt = dkt
 		prober.outDir = *outDir
 		prober.CaptureICMP = *captureICMP
+		defer t.clean()
+	case *utlsProber:
+		t, err := newTCPSender(*iface, *lAddr4, *lAddr6, !*noSynAck, *synDelay, !*noChecksums)
+		if err != nil {
+			log.Fatal(err)
+		}
+		prober.sender = t
+		prober.dkt = dkt
+		prober.outDir = *outDir
 		defer t.clean()
 	case *quicProber:
 		u, err := newUDPSender(*iface, *lAddr4, *lAddr6, true, !*noChecksums)
